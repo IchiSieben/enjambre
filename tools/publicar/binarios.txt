@@ -1,0 +1,10 @@
+# auditar.py: sha256 of every binary file a human reviewed at full size before it entered the repo.
+# fonts (SIL OFL 1.1, licenses next to them in tools/visor/fonts/)
+18be452724bfdc236c074ca94a249a7f41a86752c7d04ab258ce9ed5651f6a7e  tools/visor/fonts/jetbrains-mono-latin-wght-normal.woff2
+0640890476fc1198ab4de571fb658de443c4d85b66466ec09534a8737ab1ce9d  tools/visor/fonts/space-grotesk-latin-wght-normal.woff2
+# demo-mode captures (tools/visor/capturar_demo.py on the Mac, 2026-10-11), reviewed at full size
+13e6f727513ac6fc83ef058568ba4a04bbccb2ecb92e2a0321ecfb243eb76def  docs/img/visor-demo.mp4
+656496868063b350e4d6030f5d8770ac1f1dfca9b5f32992f293cbbc0ceb7300  docs/img/visor-demo.png
+2ef9dea0aa693fd8b0a103933c0d2aaac5a958e4ca3c50076354a15659150a80  docs/img/visor-nodos.png
+2ee546b2923a0a52a729ef57492622a9a04aca16e893ed23d970e8445eb3ea4c  docs/img/visor-telemetria.png
+f4d924427a8244337c901111938267bd4923437e0391d6b1bf3039df5c34fefd  docs/img/visor-trabajos.png

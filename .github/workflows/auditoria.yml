@@ -1,0 +1,39 @@
+name: auditoria
+# The publication audit on every push and pull request: IPs, MACs, hostnames, home paths, emails,
+# keys, forbidden words (HMAC under the AUDITORIA_CLAVE secret) and unreviewed binaries, in the
+# tree AND the whole history. Then the test suite. Any finding fails the run.
+#
+# The secret is mandatory: a push (main included) or a same-repo pull request without it fails.
+# A pull request from a fork never receives secrets, so there the audit is skipped with a warning
+# in the log and the tests still run; the maintainer's audit runs again on the merge to main.
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  auditoria:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # the history audit needs every commit, not a shallow clone
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: auditoría dura
+        env:
+          AUDITORIA_CLAVE: ${{ secrets.AUDITORIA_CLAVE }}
+          EVENTO: ${{ github.event_name }}
+          REPO_PR: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$AUDITORIA_CLAVE" ] && [ "$EVENTO" = "pull_request" ] && [ "$REPO_PR" != "$REPO" ]; then
+            echo "::warning title=auditoría saltada::PR desde un fork ($REPO_PR): GitHub no entrega el secreto AUDITORIA_CLAVE a forks. La auditoría dura NO corrió aquí; corre al fusionar en main."
+            exit 0
+          fi
+          python tools/publicar/auditar.py .
+      - name: tests
+        run: |
+          python -m pip install --quiet pytest
+          python -m pytest -q --ignore=tests/node

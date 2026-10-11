@@ -1,0 +1,1293 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="dark light">
+<title>Visor del enjambre</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Crect width='256' height='256' rx='56' fill='%230D1117'/%3E%3Cpolygon points='128,40 204.2,84 204.2,172 128,216 51.8,172 51.8,84' fill='none' stroke='%232DD4BF' stroke-width='18' stroke-linejoin='round'/%3E%3Ccircle cx='128' cy='128' r='25' fill='%232DD4BF'/%3E%3C/svg%3E">
+<style>
+/*__FONTS__*/
+/* Landing design system (Landing/src/styles/global.css): same tokens, dark first. */
+:root,:root[data-theme="dark"]{
+  --bg:#0D1117;--surface:#161B22;--surface-2:#1E242E;--border:#30363D;--fg:#E6EDF3;--muted:#8B949E;
+  --accent:#2DD4BF;--accent-strong:#2DD4BF;
+  --good:#3FB950;--warn:#D29922;--crit:#F85149;
+  --n1:#2DD4BF;--n2:#F5B841;--n3:#A78BFA;--n4:#F472B6;--n5:#60A5FA;--pc:#4CA3FF;--mac:#C9D1D9;--lx:#F59E0B;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#FFFFFF;--surface:#F6F8FA;--surface-2:#ECF0F4;--border:#D0D7DE;--fg:#1F2328;--muted:#59636E;
+  --accent:#0D9488;--accent-strong:#0F766E;
+  --good:#1A7F37;--warn:#9A6700;--crit:#CF222E;
+  --n1:#0D9488;--n2:#B7791F;--n3:#7C3AED;--n4:#DB2777;--n5:#2563EB;--pc:#0067C0;--mac:#6E7781;--lx:#B45309;
+  color-scheme:light;
+}
+:root{
+  --display:'Space Grotesk Variable','Space Grotesk',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono Variable',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --ease:cubic-bezier(.22,1,.36,1);--t-hover:200ms;--r:12px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 var(--display);overflow-x:hidden}
+main{max-width:1180px;margin:0 auto;padding:0 16px 64px}
+a{color:var(--accent-strong)}
+code,.mono{font-family:var(--mono);font-size:.86em}
+.top{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);margin:0 0 20px;padding:10px 16px}
+.topbar{display:flex;align-items:center;gap:12px;max-width:1180px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.hex{width:26px;height:26px;flex:none}
+.brand b{font-weight:600;letter-spacing:-.01em;white-space:nowrap}
+.kicker{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.fresh{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);white-space:nowrap}
+.pulse{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 0 0 var(--good);animation:pulse 2.4s var(--ease) infinite}
+.pulse.old{background:var(--warn);animation:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--good) 60%,transparent)}70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
+@media (prefers-reduced-motion:reduce){.pulse{animation:none}}
+.btn{font:inherit;font-size:12px;color:var(--fg);background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:4px 10px;cursor:pointer;transition:border-color var(--t-hover) var(--ease)}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible,.chip:focus-visible,tr.click:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+nav.jump{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;max-width:1180px;margin:8px auto 0}
+nav.jump::-webkit-scrollbar{display:none}
+nav.jump a{flex:none;font-size:12px;text-decoration:none;color:var(--muted);border:1px solid var(--border);border-radius:99px;padding:3px 10px}
+nav.jump a:hover{color:var(--fg);border-color:var(--accent)}
+section{scroll-margin-top:96px}
+h2{font-size:13px;font-family:var(--mono);font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:36px 0 12px;display:flex;align-items:center;gap:10px}
+h2::after{content:"";flex:1;height:1px;background:var(--border)}
+h3{font-size:16px;margin:0 0 8px;font-weight:600}
+.grid{display:grid;gap:12px}
+.g-kpi{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.g-nodes{grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
+.g-2{grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;min-width:0}
+.kpi .v{font-size:28px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.15}
+.kpi .l{color:var(--muted);font-size:12px}
+.kpi .s{color:var(--muted);font-size:12px;margin-top:2px}
+.row{display:flex;justify-content:space-between;gap:10px;margin:4px 0;font-size:13px}
+.row>span:first-child{color:var(--muted)}
+.row>span:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.meter{height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden;margin:2px 0 8px}
+.meter>i{display:block;height:100%;border-radius:3px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:2px 9px;border-radius:99px;border:1px solid var(--border);background:var(--surface-2);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.sw{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:-1px;flex:none}
+.node-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.node-h b{font-size:17px}
+.busy{border:1px solid color-mix(in srgb,var(--warn) 60%,transparent);background:color-mix(in srgb,var(--warn) 12%,transparent);border-radius:8px;padding:6px 10px;font-size:12px;margin:0 0 10px}
+.err{color:var(--crit)}
+.muted{color:var(--muted)}
+.note{color:var(--muted);font-size:12px;margin-top:8px}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:13px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:top;white-space:nowrap}
+th{color:var(--muted);font-weight:500;font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em}
+td.n,th.n{text-align:right}
+td.wrap{white-space:normal}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--surface-2)}
+.sticky1 th:first-child,.sticky1 td:first-child{position:sticky;left:0;background:var(--surface);z-index:1}
+.few{font-size:10px;border:1px dashed var(--muted);color:var(--muted);border-radius:4px;padding:0 4px;margin-left:6px}
+.sess{display:grid;gap:8px}
+.sess .card{padding:10px 12px;display:grid;grid-template-columns:auto 1fr auto;gap:2px 10px;align-items:center}
+.sess .p{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sess .m{grid-column:2/4;font-size:12px;color:var(--muted)}
+.cost2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:560px){.cost2{grid-template-columns:1fr}}
+.big{font-size:34px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1}
+.tag{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent-strong);border:1px solid color-mix(in srgb,var(--accent) 50%,transparent);border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:2px}
+.bars{display:flex;align-items:flex-end;gap:6px;height:150px;border-bottom:1px solid var(--border);padding-top:8px}
+.bar{flex:1;display:flex;flex-direction:column-reverse;gap:2px;min-width:14px;outline:none}
+.bar>i{display:block;width:100%}
+.bar>i:last-child{border-radius:4px 4px 0 0}
+.bar:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.xl{display:flex;gap:6px}.xl>span{flex:1;text-align:center;font-size:11px;color:var(--muted);min-width:14px;font-family:var(--mono)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);margin:4px 0 8px}
+#tip{position:fixed;pointer-events:none;background:var(--surface);color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;display:none;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:20;max-width:260px}
+details>summary{cursor:pointer;color:var(--muted);font-size:12px;margin-top:8px}
+.detail{border-color:var(--accent)}
+.detail .x{float:right}
+.tl{width:100%;display:block;touch-action:pan-y;cursor:grab;user-select:none}
+.tl text{fill:var(--muted);font:11px var(--mono)}.tl .lane{fill:var(--fg);font:600 11px var(--sans,inherit)}
+.tl .grid{stroke:var(--border)}.tl .sep{stroke:var(--border);stroke-dasharray:3 3}
+.tlbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 6px;font-size:12px}.tlbar .btn{min-width:34px}
+.foot{margin-top:40px;border-top:1px solid var(--border);padding-top:14px}
+.foot p{color:var(--muted);font-size:12px;margin:6px 0}
+.empty{color:var(--muted);font-size:13px}
+#proyectos:not(.all) tr.more{display:none}
+/* F2 feedback: icons, money, traffic lights, alerts, interactive charts */
+.ic{width:14px;height:14px;fill:currentColor;vertical-align:-2px;flex:none}
+.ic.os{width:15px;height:15px;margin-right:5px;color:var(--fg)}
+.icons{display:inline-flex;gap:6px;align-items:center;color:var(--muted)}
+.icons .ic{width:15px;height:15px}
+.usd{color:var(--good);font-weight:600;font-variant-numeric:tabular-nums}
+.usd.xl{font-size:40px;letter-spacing:-.02em;line-height:1.05}
+.usd.l{font-size:20px;font-weight:700}
+.flow{display:inline-flex;align-items:center;gap:3px;font-size:11px;border:1px solid color-mix(in srgb,var(--n2) 55%,transparent);color:var(--fg);border-radius:99px;padding:1px 7px;white-space:nowrap}
+.light{display:inline-flex;align-items:center;gap:6px;font-size:12px}
+.light .dot{width:10px;height:10px;box-shadow:0 0 0 3px color-mix(in srgb,currentColor 18%,transparent)}
+.alertchip{font:inherit;font-size:12px;border-radius:99px;padding:3px 10px;text-decoration:none;white-space:nowrap;border:1px solid}
+.alertchip.crit{color:var(--crit);border-color:var(--crit);background:color-mix(in srgb,var(--crit) 12%,transparent)}
+.alertchip.warn{color:var(--warn);border-color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,transparent)}
+.alertchip.ok{color:var(--good);border-color:color-mix(in srgb,var(--good) 50%,transparent)}
+.alertbox{border-color:var(--crit);background:color-mix(in srgb,var(--crit) 7%,var(--surface))}
+.alertbox.warn{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 7%,var(--surface))}
+.chart{width:100%;height:auto;display:block;touch-action:pan-y}
+.chart text{fill:var(--muted);font:10px var(--mono)}
+.chart .col{fill:transparent;cursor:crosshair}
+.chart .col:hover,.chart .col.on{fill:color-mix(in srgb,var(--accent) 10%,transparent)}
+.chart .grid{stroke:var(--border);stroke-width:1}
+.range{font-size:13px;color:var(--muted);margin:6px 0 0}
+@media (max-width:560px){.usd.xl{font-size:32px}.fresh .alertchip{display:none}}
+/* Second pass: brand-colour icons with the Landing's chip interaction (Landing global.css .logo-chip:
+   colour wash from the logo, tinted border, the logo tilts), node labels, filters, job detail. */
+:root{--spring:cubic-bezier(.34,1.56,.64,1)}
+.lg{--logo:var(--ld,currentColor)}
+:root[data-theme="light"] .lg{--logo:var(--ll,var(--ld,currentColor))}
+.lg svg,svg.lg{fill:var(--logo)}
+.lchip{position:relative;isolation:isolate;display:inline-flex;align-items:center;gap:6px;font:11px/1.4 var(--mono);color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:3px 8px;background:color-mix(in srgb,var(--bg) 40%,transparent);cursor:default;transition:color var(--t-hover) var(--ease),border-color var(--t-hover) var(--ease)}
+.lchip.only{padding:3px 4px}
+.lchip::after{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:radial-gradient(circle at 1rem 50%,color-mix(in srgb,var(--logo) 24%,transparent),transparent 75%);opacity:0;transform:scale(.4);transform-origin:1rem 50%;transition:opacity 380ms var(--ease),transform 380ms var(--spring)}
+.lchip svg{width:14px;height:14px;flex:none;transition:transform 380ms var(--spring)}
+.lchip:hover,.lchip:focus-visible,.lchip.on{color:var(--fg);border-color:color-mix(in srgb,var(--logo) 60%,var(--border));outline:none}
+.lchip:hover::after,.lchip:focus-visible::after,.lchip.on::after{opacity:1;transform:none}
+.lchip:hover svg,.lchip:focus-visible svg,.lchip.on svg{transform:translateY(-1px) scale(1.2) rotate(-8deg)}
+@media (prefers-reduced-motion:reduce){.lchip::after,.lchip svg{transition:none;transform:none!important}}
+.dev{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-weight:600;font-variant-caps:all-small-caps;letter-spacing:.04em;padding:0 7px 1px 5px;border-radius:99px;background:color-mix(in srgb,var(--dc,var(--muted)) 16%,transparent);border:1px solid color-mix(in srgb,var(--dc,var(--muted)) 45%,transparent)}
+.dev.only{padding:1px 3px}.split{display:inline-flex;gap:4px;flex-wrap:wrap}
+th[data-s]{cursor:pointer;user-select:none}th[aria-sort=descending]::after{content:" ▾"}th[aria-sort=ascending]::after{content:" ▴"}th[data-s]:hover{color:var(--fg)}
+.filters input{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:3px 6px;max-width:150px}
+.dev svg{width:15px;height:15px;flex:none}
+#tip b{color:var(--fg)}
+#tip .w{display:block;color:var(--muted);margin-top:2px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 10px;font-size:12px;color:var(--muted)}
+.filters select{font:inherit;font-size:12px;color:var(--fg);background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:4px 8px;max-width:100%}
+.filters select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+tr.sel td{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+pre.log{font:11px/1.45 var(--mono);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;max-height:260px;overflow:auto;white-space:pre-wrap;word-break:break-word;margin:6px 0 0}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;font-size:13px;margin-top:8px}
+.kv>span:nth-child(odd){color:var(--muted)}
+.trio{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:12px;margin-top:8px}
+.trio .l{color:var(--muted);font-size:13px;font-weight:600;letter-spacing:.02em}
+.trio .s{color:var(--muted);font-size:12px;margin-top:2px}
+.tl .hl{stroke:var(--fg);stroke-width:2}
+.tl.focus [data-k]:not(.hl){opacity:.22}
+.tabs3{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:12px;margin-top:12px}
+.tabs3 .card{padding:10px 12px}
+.st-ok{color:var(--good)}.st-bad{color:var(--crit)}.st-mid{color:var(--warn)}
+details.tests{margin-top:10px}details.tests>summary{cursor:pointer;color:var(--fg2,var(--muted));font-size:13px}
+.cghead{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}.seg{display:inline-flex;gap:4px;flex-wrap:wrap}.seg .btn.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.heat{display:grid;grid-template-columns:28px repeat(24,minmax(0,1fr));gap:2px;margin-top:8px;max-width:820px;font:10px var(--mono);color:var(--muted)}.heat i{height:18px;border-radius:2px;background:linear-gradient(color-mix(in srgb,var(--n1) var(--a),transparent),color-mix(in srgb,var(--n1) var(--a),transparent)),color-mix(in srgb,var(--border) 55%,transparent);}.heat i:hover,.heat i.on{outline:2px solid var(--fg)}.heat .hd{align-self:center}.heat .hh{text-align:left}
+@keyframes fin{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.fx,tr.new{animation:fin .45s var(--ease) both}tr.new td:first-child{box-shadow:inset 3px 0 var(--accent)}
+.g-kpi>.card{background:linear-gradient(165deg,color-mix(in srgb,var(--fg) 7%,transparent),transparent 42%),var(--surface);box-shadow:inset 0 1px 0 color-mix(in srgb,var(--fg) 12%,transparent),0 10px 24px -18px #000}
+#live.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+@media (prefers-reduced-motion:reduce){.fx,tr.new{animation:none}}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:10px}.mcard{border-top:3px solid var(--fc);display:flex;flex-direction:column;gap:6px}
+.mh{display:flex;gap:10px;align-items:center}.mf svg{width:26px;height:26px;display:block}.mt{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:12px}
+.mst{font:600 12px inherit;border-radius:99px;padding:2px 10px;border:1px solid var(--sc);color:var(--fg);background:color-mix(in srgb,var(--sc) 20%,transparent);cursor:pointer}.mst:disabled{cursor:default}
+.medit{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.medit select,.medit input{font:inherit;font-size:12px;color:var(--fg);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:2px 6px;max-width:100%}
+.qgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:4px 24px}.qbars h4{margin:10px 0 4px;font-size:13px}
+.qb{display:grid;grid-template-columns:minmax(70px,130px) minmax(50px,1fr) auto;gap:8px;align-items:center;font-size:12px;margin:3px 0}.qb i{height:12px;width:var(--w);background:color-mix(in srgb,var(--fc) 40%,transparent);border-radius:3px}.qb.ok i{background:var(--fc)}.qb .mf{display:inline-block;vertical-align:-3px;margin-right:4px}.qb .mf svg{width:14px;height:14px}
+/* live.js (prompts 18-19): the strip, running cards, node chips and the node detail */
+.nowbar{max-width:1180px;margin:8px auto 0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;font-size:13px;color:var(--muted)}
+.nowbar b{color:var(--fg);font-weight:600}.nowbar .on{color:var(--good)}
+.ndot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.nowbar.run .ndot{background:var(--good);animation:pulse 2.4s var(--ease) infinite}
+.sleepy{font-size:12px;font-weight:600;color:#fff;background:var(--crit);border-radius:99px;padding:3px 10px}
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:10px;margin:0 0 12px}
+.rcard{border-left:4px solid var(--rc,var(--good));display:flex;flex-direction:column;gap:4px;padding:12px 14px}
+.rcard .rh{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.rcard .rh b{font-size:15px;word-break:break-word}
+.rcard .rm{font-size:12.5px;color:var(--muted)}.rcard .rl{font:12px/1.4 var(--mono);color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rst{font:600 11px var(--mono);letter-spacing:.04em;text-transform:uppercase;border-radius:99px;padding:2px 8px;color:var(--bg);background:var(--rc,var(--good))}
+.rcard .bar{flex:0 0 4px;height:4px;border-radius:2px;background:var(--surface-2);overflow:hidden}.rcard .bar i{display:block;height:100%;background:var(--rc,var(--good));width:var(--w)}
+.wlist{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}.wlist .chip{font-size:12px}
+.tchips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 6px}.tchip{font:12px var(--mono);border:1px solid var(--border);border-radius:99px;padding:2px 8px;background:var(--surface-2)}
+.prio{font:600 11px var(--mono);border-radius:99px;padding:1px 8px;border:1px solid var(--pc-c);color:var(--pc-c)}
+.prio.alta{--pc-c:var(--crit)}.prio.normal{--pc-c:var(--muted)}.prio.baja{--pc-c:var(--n5)}.prio.nocturna{--pc-c:var(--n3)}
+.motivo{font-size:12.5px;color:var(--fg);border-left:2px solid var(--rc,var(--muted));padding-left:8px}
+.ctl{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.ctl .btn,.ctl select{padding:1px 9px;font-size:12px}
+.ctlcmd{font:12px var(--mono);background:var(--surface-2);padding:2px 6px;border-radius:4px;user-select:all}
+.pol{font-size:12px;color:var(--muted);margin:2px 0 6px}
+.tchip.warn{border-color:var(--warn);color:var(--warn)}.tchip.crit{border-color:var(--crit);color:var(--crit)}
+#teledet .nsel{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}#teledet .nsel .btn.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.gauges{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:10px}
+.gauge{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;padding:10px}.gauge svg{width:96px;height:58px}
+.gauge .gv{font:600 18px var(--mono)}.gauge .gl{font-size:12px;color:var(--muted)}.gauge .gs{font-size:11.5px;color:var(--muted)}
+.sparks{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:10px;margin-top:10px}
+.spark{padding:10px 12px}.spark svg{width:100%;height:64px;display:block}.spark .sh{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}.spark .sh b{color:var(--fg);font-family:var(--mono)}.spark .swin{font-size:11.5px;color:var(--muted);margin-top:2px}
+#teledet,#corriendo{scroll-margin-top:120px}
+.ptag{font:11px var(--mono);border-radius:99px;padding:1px 7px;background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--fg)}
+</style>
+</head>
+<body>
+<header class="top"><div class="topbar">
+  <div class="brand">
+    <svg class="hex" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2l12 7v14l-12 7-12-7V9z" fill="none" stroke="var(--accent)" stroke-width="2"/><circle cx="16" cy="16" r="4" fill="var(--accent)"/></svg>
+    <div><div class="kicker">enjambre</div><b>Visor</b></div>
+  </div>
+  <div class="fresh"><a class="alertchip ok" id="alertchip" href="#alertas" hidden></a><span class="pulse" id="pulse"></span><span id="fresh">—</span>
+    <span class="sleepy" id="demo" hidden title="Modo demo: un enjambre inventado (nombres, proyectos y números sintéticos) pasado por el código real del visor" style="color:var(--accent);border-color:var(--accent)">demo · datos sintéticos</span>
+    <span class="sleepy" id="sleepy" hidden title="live.json no se actualiza: el bucle «enjambre live --serve» (tarea \enjambre\live) no está corriendo. Arráncalo con: python enjambre.py live --serve">visor dormido</span>
+    <button class="btn" id="reload" type="button" hidden title="Volver a leer la instantánea">recargar</button>
+    <button class="btn" id="live" type="button" hidden aria-pressed="true" title="Recargar sola cuando haya una instantánea nueva (sondeo cada 30 s)">en vivo</button>
+    <button class="btn" id="theme" type="button" aria-label="Cambiar tema">◐</button></div>
+</div>
+<div class="nowbar" id="nowbar" hidden></div><span id="nowsr" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)"></span>
+<nav class="jump" aria-label="Secciones"><a href="#vivo">Ahora</a><a href="#consumo">Consumo</a><a href="#proyectos">Proyectos</a><a href="#modelos">Modelos locales</a><a href="#historia">Historia</a></nav>
+</header>
+<main id="app"><p class="empty">Cargando…</p></main>
+<div id="tip" role="tooltip"></div>
+<script>
+let D = /*__DATA__*/null;
+const DATA_URL = 'data.php';           // web copy: same page, data fetched behind the login
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtTok = (n) => n == null ? '—' : n >= 1e9 ? (n/1e9).toFixed(2)+' G' : n >= 1e6 ? (n/1e6).toFixed(1)+' M' : n >= 1e3 ? Math.round(n/1e3)+' k' : String(n);
+const usd = (x) => x == null ? '—' : '$' + (x >= 1000 ? Math.round(x).toLocaleString('es-PE') : x >= 100 ? x.toFixed(0) : x.toFixed(2));
+const sec = (x) => x == null ? '—' : x >= 3600 ? (x/3600).toFixed(1)+' h' : x >= 60 ? Math.round(x/60)+' min' : x.toFixed(1)+' s';
+const hrs = (s) => s == null ? '—' : (s/3600).toFixed(s >= 36000 ? 0 : 1) + ' h';
+const ago = (s) => s == null ? '—' : s < 90 ? Math.round(s)+' s' : s < 5400 ? Math.round(s/60)+' min' : s < 172800 ? (s/3600).toFixed(1)+' h' : Math.round(s/86400)+' d';
+const lima = (ts) => new Date(ts*1000 - 5*3600e3).toISOString();                       // Lima, UTC-5, no DST
+const day = (ts) => ts ? lima(ts).slice(0,10) : '—';
+const dtm = (ts) => ts ? lima(ts).slice(0,16).replace('T',' ') : '—';
+const isoTs = (s) => { const t = Date.parse(s || ''); return isNaN(t) ? null : t/1000; };
+const tok = (u) => u ? u.in + u.out + u.cw + u.cr : 0;
+const pct = (v) => Math.max(0, Math.min(100, v || 0));
+const MES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+// Traffic light from ~/.claude/rules/thresholds.json (ids visor-*-amber / *-red, quota-5h).
+// No readable threshold = grey and said so: a green we cannot back is a claim, not a reading.
+function light(v, amberId, redId) {
+  const T = D.thresholds || {}, a = T[amberId], r = T[redId];
+  if (v == null) return {col: 'var(--muted)', word: 'sin lectura', lvl: 'none'};
+  if (a == null && r == null) return {col: 'var(--muted)', word: 'sin umbral en thresholds.json', lvl: 'none'};
+  if (r != null && v >= r) return {col: 'var(--crit)', word: `rojo: ≥ ${r} %`, lvl: 'crit'};
+  if (a != null && v >= a) return {col: 'var(--warn)', word: `ámbar: ≥ ${a} %${r != null ? `, rojo en ${r} %` : ''}`, lvl: 'warn'};
+  return {col: 'var(--good)', word: `verde: bajo ${a ?? r} %`, lvl: 'good'};
+}
+// ---------------------------------------------------------------- icons and node labels
+const OSI = /*__OSICONS__*/{};   // Windows/macOS/Linux marks, put in the template by build.py
+const icon = (id) => (D.icons || {})[id] || OSI[id];
+const cvars = (i) => i && i.color ? `--ld:${esc(i.color.d)};--ll:${esc(i.color.l)}` : '';
+// Every icon is defined once (sprite() at the top of the page) and used by reference: the
+// projects table repeats the same logos on many rows, and a colour logo's gradients have ids.
+const svgOf = (i, id) => `<svg viewBox="${esc(i.vb)}" aria-hidden="true"><use href="#ic-${esc(id)}"/></svg>`;
+const sprite = () => `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${Object.entries({...OSI, ...(D.icons || {})})
+  .map(([id, i]) => `<symbol id="ic-${esc(id)}" viewBox="${esc(i.vb)}">${i.svg}</symbol>`).join('')}</defs></svg>`;
+// A tech chip like the Landing's: brand colour, wash + tilt on hover/focus, tooltip with what it is.
+const tchip = (id, only) => { const i = icon(id); if (!i) return '';
+  return `<span class="lchip lg${only ? ' only' : ''}" style="${cvars(i)}" tabindex="0" data-tt="${esc(i.name)}" data-tw="${esc(i.what || '')}" aria-label="${esc(i.name)}">${svgOf(i, id)}${only ? '' : esc(i.name)}</span>`; };
+// A node is read by its label (nodes.toml: "PC", "Mac mini", "Laptop"), never by its id.
+const lab = (n) => ((D.nodes || {})[n] || {}).label || ({win: 'PC', mac: 'Mac'})[n] || n || '—';
+// Free text from the ledger or a node (route reason, alert reason, error) names nodes by id:
+// show the label there too ("tests -> Mac mini: first free node of prefer ['Mac mini', 'PC']").
+const deid = (t) => { let x = String(t ?? '').replace(/(?:\/Users|\/home)\/[^\/\s"'<>|:]+|[A-Za-z]:(?:\\+|\/)Users(?:\\+|\/)[^\\\/\s"'<>|:]+/gi, '~'); for (const n of Object.keys(D.nodes || {})) if (/^[a-z0-9_-]+$/i.test(n))
+  x = x.replace(new RegExp('(^|[^\\w/.-])' + n + '(?![\\w/-]|\\.\\w)', 'g'), (m, a) => a + lab(n)); return x; };
+const osOf = (n) => ((D.nodes || {})[n] || {}).os || (n === 'mac' ? 'darwin' : n === 'win' ? 'windows' : '');
+const osSvg = (n) => { const i = OSI['os-' + osOf(n)]; return i ? `<span class="lg" style="${cvars(i)};display:inline-flex">${svgOf(i, 'os-' + osOf(n))}</span>` : sw(n); };
+const dev = (n, text) => `<span class="dev${text === false ? ' only' : ''}" style="--dc:${colorOf(n)}" title="${esc(lab(n))} · ${esc((OSI['os-' + osOf(n)] || {}).name || '')}">${osSvg(n)}${text === false ? '' : `<span>${esc(typeof text === 'string' ? text : lab(n))}</span>`}</span>`;
+const money = (x, cls) => `<span class="usd ${cls || ''}">${usd(x)}</span>`;
+const flow = (from, to) => Object.entries(to || {}).map(([n, k]) => `<span class="flow" title="${k} trabajo(s) del enjambre enviados desde esta sesión a ${esc(lab(n))}">${osSvg(from)}→${osSvg(n)}${esc(lab(from))}→${esc(lab(n))} · ${k}</span>`).join(' ');
+let NODES = [], now = Date.now()/1000;
+const colorOf = (n) => ({windows: 'var(--pc)', darwin: 'var(--mac)', linux: 'var(--lx)'})[osOf(n)] || `var(--n${(NODES.indexOf(n) % 5 + 5) % 5 + 1})`;
+const sw = (n) => `<span class="sw" style="background:${colorOf(n)}"></span>`;
+const stIcon = (s) => s === 'ok' ? '<span class="st-ok">✓ ok</span>' : s === 'incomplete' ? '<span class="st-mid">◐ incompleto</span>' : s === 'running' ? '<span class="st-mid">● corriendo</span>' : s === 'queued' ? '<span class="muted">… en cola</span>' : s === 'muerto' ? '<span class="st-bad">✗ muerto (sin supervisor)</span>' : `<span class="st-bad">✗ ${esc(s)}</span>`;
+
+// What the page remembers across the 2-minute refresh: kept in the URL hash, restored on render.
+const S = {p: null, j: null, jp: '', mt: '', md: '', hl: null};
+const HK = ['p', 'j', 'jp', 'mt', 'md', 'ms', 'ps', 'pd', 'pq', 'pf', 'pt', 'cg', 'tn', 'tw'];
+const readHash = () => { const h = new URLSearchParams(location.hash.replace(/^#/, ''));
+  for (const k of HK) if (h.has(k)) S[k] = h.get(k); };
+const writeHash = () => { const h = new URLSearchParams(); for (const k of HK) if (S[k]) h.set(k, S[k]);
+  history.replaceState(null, '', h.toString() ? '#' + h.toString() : location.pathname + location.search); };
+
+// ---------------------------------------------------------------- live
+function live() {
+  const alive = NODES.filter(n => D.nodes[n].alive).length;
+  const q = D.queue || {queue:[],running:[],done:[]};
+  const running = q.running.length + Object.values(D.running_models || {}).filter(Boolean).length;
+  const sessions = NODES.reduce((a,n) => a + (D.nodes[n].sessions || []).length, 0);
+  const busy = NODES.filter(n => ((D.nodes[n].presence || {}).busy || {}).alive);
+  const A = D.alerts || {};
+  return `<section id="vivo"><h2>Ahora</h2>
+    <div id="corriendo"></div>
+    <div class="grid g-kpi">
+      ${kpi('Aparatos vivos', `${alive}<span class="muted" style="font-size:18px"> / ${NODES.length}</span>`, NODES.map(n => `${esc(lab(n))} ${D.nodes[n].alive ? '✓' : '✗'}`).join(' · '))}
+      ${kpi('Cola de watch · corriendo', running, `${q.queue.length} en cola${busy.length ? ' · ocupado: ' + busy.map(n => esc(lab(n))).join(', ') : ''}`)}
+      ${kpi('Sesiones abiertas', sessions, NODES.map(n => `${esc(lab(n))} ${(D.nodes[n].sessions || []).length}`).join(' · '))}
+      ${kpi('Fallidos · incompletos', `<span style="color:${A.failed_7d ? 'var(--crit)' : 'inherit'}">${A.failed_7d ?? '—'}</span><span class="muted" style="font-size:18px"> · </span><span style="color:${A.incomplete_7d ? 'var(--warn)' : 'inherit'}">${A.incomplete_7d ?? '—'}</span>`, `últimos ${A.days || 7} días · ${D.ledger_n ?? '—'} trabajos en el ledger`)}
+    </div>
+    ${alertsBox()}
+    <div class="grid g-nodes" style="margin-top:12px">${NODES.map(nodeCard).join('')}</div>
+    <div id="teledet"></div>
+    <div id="sesiones-snap">${sessionsList()}</div></section>`;
+}
+
+// Everything that is red or amber right now, in one box at the top (and a chip in the header).
+function problems() {
+  const A = D.alerts || {}, out = [];
+  if (A.failed_7d) out.push({lvl: 'crit', t: `${A.failed_7d} trabajo(s) fallido(s) en ${A.days} días`});
+  if (A.incomplete_7d) out.push({lvl: 'warn', t: `${A.incomplete_7d} incompleto(s) en ${A.days} días (permisos denegados o rama sin subir)`});
+  for (const n of NODES) {
+    const x = D.nodes[n], L = lab(n);
+    if (!x.alive) out.push({lvl: 'crit', t: `${L}: sin respuesta`});
+    else if (x.stale) out.push({lvl: 'warn', t: `${L}: instantánea vieja (hace ${ago(x.age_s)})`});
+    (x.disks || []).forEach(d => { const l = light(100 - 100*d.free_gb/d.total_gb, 'visor-disk-amber', 'visor-disk-red');
+      if (l.lvl === 'crit' || l.lvl === 'warn') out.push({lvl: l.lvl, t: `${L} ${d.mount}: disco ${l.word} (${Math.round(d.free_gb)} GB libres)`}); });
+    const m = x.memory || {};
+    if (m.free_pct != null) { const l = light(100 - m.free_pct, 'visor-mem-amber', 'visor-mem-red');
+      if (l.lvl === 'crit' || l.lvl === 'warn') out.push({lvl: l.lvl, t: `${L}: memoria ${l.word} (${m.free_pct} % libre)`}); }
+  }
+  const q = D.quota;
+  if (q) [['five_pct', 'visor-quota-5h-amber', 'quota-5h', '5 h'], ['week_pct', 'visor-quota-7d-amber', 'visor-quota-7d-red', '7 días']].forEach(([k, a, r, w]) => {
+    const l = light(q[k], a, r); if (l.lvl === 'crit' || l.lvl === 'warn') out.push({lvl: l.lvl, t: `cuota de ${w} al ${q[k]} %: ${l.word}${q.stale ? ` (última lectura, hace ${ago(now - q.ts)})` : ''}`}); });
+  return out;
+}
+
+const span = (a, b) => !a ? '—' : day(a) === day(b) ? `${dtm(a)}${b - a > 60 ? '–' + dtm(b).slice(11) : ''}` : `${dtm(a)} – ${dtm(b)}`;
+const stWord = (st, n) => st === 'failed' ? `<span class="err">✗ ${n > 1 ? n + ' fallidos' : 'fallido'}</span>` : `<span style="color:var(--warn)">◐ ${n > 1 ? n + ' incompletos' : 'incompleto'}</span>`;
+const whyCell = (w) => w ? esc(deid(w)) : '<span class="muted">sin causa registrada</span>';
+function alertsBox() {
+  const P = problems(), A = D.alerts || {};
+  // "9 fallidos: mac inalcanzable 10:06–11:55" is worth more than 9 equal rows (F3)
+  const rows = (A.groups || []).filter(g => g.recent).slice(0, 10).map(g => `<tr class="click" tabindex="0" data-j="${esc((g.ids || [])[0] || '')}" title="ver el último y su log">
+    <td>${stWord(g.status, g.n)}</td><td class="wrap">${whyCell(g.why)}</td><td>${(g.nodes || []).map(n => dev(n)).join(' ')}</td><td class="mono">${span(g.first, g.last)}</td></tr>`).join('');
+  const T = A.test_rows || [];
+  const tests = T.length ? `<details class="tests"><summary>pruebas · ${A.tests_7d ?? T.length} en ${A.days || 7} días <span class="muted">(no cuentan en el semáforo)</span></summary>
+    <div class="scroll"><table><tbody>${T.slice(0, 20).map(r => `<tr class="click" tabindex="0" data-j="${esc(r.id || '')}"><td>${stWord(r.status, 1)}</td><td class="wrap">${whyCell(r.why)}</td><td>${dev(r.node)}</td><td class="mono">${dtm(r.t0 || isoTs(r.start))}</td></tr>`).join('')}</tbody></table></div>
+    <div class="note">Prueba = repo <code>enjambre-sandbox</code>, worker <code>stub</code>, pruebas de fuego (<code>e3-…</code>, <code>…-smoke</code>) o <code>test: true</code> en el TASK.</div></details>` : '';
+  if (!P.length) return `<div class="card" id="alertas" style="margin-top:12px"><span class="light" style="color:var(--good)"><span class="dot" style="background:var(--good)"></span>Todo en verde: ningún fallo en ${A.days || 7} días, discos, memoria y cuota bajo sus umbrales.</span>${tests}</div>`;
+  const crit = P.some(p => p.lvl === 'crit');
+  return `<div class="card alertbox ${crit ? '' : 'warn'}" id="alertas" style="margin-top:12px"><h3>${crit ? '⚠ Atención' : 'Para revisar'} · ${P.length}</h3>
+    ${P.map(p => `<div class="light" style="color:${p.lvl === 'crit' ? 'var(--crit)' : 'var(--warn)'};margin:3px 14px 3px 0"><span class="dot" style="background:currentColor"></span><span style="color:var(--fg)">${esc(p.t)}</span></div>`).join('')}
+    ${rows ? `<div class="scroll" style="margin-top:8px"><table><thead><tr><th>Cuántos</th><th>Por qué</th><th>Aparato</th><th>Cuándo (Lima)</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="note">Una fila por causa. Tócala para ver el último trabajo de ese grupo y su log.</div>` : ''}${tests}</div>`;
+}
+const kpi = (l, v, s) => `<div class="card kpi"><div class="l">${l}</div><div class="v">${v}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
+
+function nodeCard(n) {
+  const x = D.nodes[n], p = x.presence || {}, m = x.memory || {};
+  const lvl = p.level || 'unknown';
+  const lc = {local:'var(--good)',ready:'var(--good)',ssh:'var(--warn)',ping:'var(--warn)',down:'var(--crit)'}[lvl] || 'var(--muted)';
+  const b = p.busy;
+  const disks = (x.disks || []).map(d => { const used = 100 - 100*d.free_gb/d.total_gb, l = light(used, 'visor-disk-amber', 'visor-disk-red'); return `
+    <div class="row"><span class="mono"><span class="dot" style="background:${l.col};margin-right:6px" title="${esc(l.word)}"></span>${esc(d.mount)}</span><span>${Math.round(d.free_gb)} GB libres de ${Math.round(d.total_gb)}</span></div>
+    <div class="meter" role="img" aria-label="${used.toFixed(0)} % usado, ${esc(l.word)}"><i style="width:${used}%;background:${l.col}"></i></div>`; }).join('');
+  const ml = light(m.free_pct != null ? 100 - m.free_pct : null, 'visor-mem-amber', 'visor-mem-red');
+  const pm = (p.mounts && p.mounts.mounts) ? p.mounts.mounts.map(mt => ({name: mt.name, ok: mt.ok})) : (x.mounts || []).map(mt => ({name: mt.share, ok: mt.ok}));
+  const mo = x.models;
+  return `<div class="card">
+    <div class="node-h"><b>${dev(n)}</b><span class="chip"><span class="dot" style="background:${lc}"></span>${esc(lvl)}</span></div>
+    <div class="tchips" data-tn="${esc(n)}"></div>
+    ${b && b.alive ? `<div class="busy">Ocupado por <b>${esc(b.quien)}</b> (${esc(b.tipo)}) desde ${esc((b.desde||'').replace('T',' ').slice(0,16))}</div>` : ''}
+    <div class="row"><span>Instantánea <span class="muted">(discos, memoria, montajes)</span></span><span class="${x.stale ? 'err' : ''}">${x.stale ? 'VIEJA · ' : ''}hace ${ago(x.age_s)}</span></div>
+    ${x.error ? `<div class="row err"><span>error</span><span>${esc(deid(x.error))}</span></div>` : ''}
+    ${m.free_pct != null ? `<div class="row"><span><span class="dot" style="background:${ml.col};margin-right:6px" title="${esc(ml.word)}"></span>Memoria libre</span><span>${m.free_pct} % de ${m.total_gb} GB</span></div>
+      <div class="meter" role="img" aria-label="${100-m.free_pct} % en uso, ${esc(ml.word)}"><i style="width:${100-m.free_pct}%;background:${ml.col}"></i></div>` : ''}
+    ${disks}
+    ${mo ? `<div class="row"><span>Gestor de modelos</span><span>${mo.health && mo.health.running ? 'corriendo: ' + esc(mo.health.task || mo.health.running) : 'en reposo'} · ${(mo.health||{}).queued ?? 0} en cola</span></div>` : ''}
+    <details><summary>Montajes, tmux y fuentes</summary>
+      <div class="row"><span>Montajes</span><span>${pm.length ? pm.map(mt => `${mt.ok ? '✓' : '✗'} ${esc(mt.name)}`).join(' · ') : '<span class="muted">ninguno</span>'}</span></div>
+      <div class="row"><span>tmux</span><span>${(x.tmux || []).length ? esc(x.tmux.join(', ')) : '—'}</span></div>
+      ${mo ? `<div class="row"><span>Servidor de modelos (RSS)</span><span>${mo.server_rss_mb ?? '—'} MB</span></div>` : ''}
+      <div class="row"><span>Fuentes con error</span><span>${(x.errors || []).length ? `<span class="err">${esc(x.errors.join(', '))}</span>` : 'ninguna'}</span></div>
+    </details></div>`;
+}
+
+function sessionsList() {
+  const rows = [];
+  for (const n of NODES) for (const s of (D.nodes[n].sessions || [])) rows.push([n, s]);
+  if (!rows.length) return `<div class="card empty" style="margin-top:12px">No hay sesiones de Claude Code abiertas.</div>`;
+  return `<h3 style="margin:20px 0 8px">Sesiones de Claude Code abiertas</h3><div class="sess">${rows.map(([n,s]) => `
+    <div class="card"><span class="dot" style="background:${s.status === 'busy' ? 'var(--accent)' : 'var(--muted)'}" title="${s.status === 'busy' ? 'trabajando' : 'en espera'}"></span>
+      <span class="p">${esc(s.project)}${s.name ? ` <span class="muted" style="font-weight:400">· ${esc(s.name)}</span>` : ''}</span>
+      <span class="chip">${dev(n)}</span>
+      <span class="m">${s.status === 'busy' ? 'trabajando' : 'en espera'} · abierta hace ${ago(now - s.started)}${s.context_k != null && s.context_k >= 0 ? ` · contexto ${s.context_k} k` : ''}${s.cost_usd != null && s.cost_usd >= 0 ? ` · ${money(s.cost_usd)} equivalente` : ''}${s.sent_to && Object.keys(s.sent_to).length ? ' · ' + flow(n, s.sent_to) : ''}</span></div>`).join('')}</div>
+    <div class="note">Una fila = un proceso de Claude Code vivo (PID comprobado). Contexto y coste vienen de la statusline de esa ventana. <b>${esc(lab('win'))}→${esc(lab('mac'))}</b> = la sesión mandó trabajos del enjambre a otro aparato (el ledger guarda la sesión que los pidió).</div>`;
+}
+
+// ---------------------------------------------------------------- consumption
+// The history range, merged over nodes (each node's history.db: since = first session start).
+function histRange() {
+  const hs = Object.values(D.history_status || {}).filter(Boolean);
+  const s = hs.map(h => h.since).filter(Boolean), u = hs.map(h => h.until).filter(Boolean);
+  return s.length ? {since: day(Math.min(...s)), until: day(Math.max(...u)), t0: Math.min(...s)} : null;
+}
+const isoWeek = (d) => { const t = new Date(d + 'T00:00:00Z'), wd = (t.getUTCDay() + 6) % 7;
+  t.setUTCDate(t.getUTCDate() - wd + 3); const y = t.getUTCFullYear(), j4 = new Date(Date.UTC(y, 0, 4));
+  const w = 1 + Math.round(((t - j4) / 864e5 - 3 + (j4.getUTCDay() + 6) % 7) / 7); return `${y}-S${String(w).padStart(2, '0')}`; };
+// Calendar buckets over every day of the history (week = ISO, Monday first; month = calendar),
+// from history_by_day: a session's cost on the day it started. days = days the bucket covers
+// inside the history, so the first and the current bucket average over the days they really have.
+function buckets(keyOf) {
+  const R = histRange(); if (!R) return [];
+  const HB = D.history_by_day || {}, out = new Map();
+  for (let t = R.t0; day(t) <= D.today; t += 86400) {
+    const d = day(t), k = keyOf(d); let b = out.get(k);
+    if (!b) out.set(k, b = {k, first: d, last: d, days: 0, nodes: {}, cost: 0, sessions: 0});
+    b.last = d; b.days++;
+    for (const [n, v] of Object.entries(HB[d] || {})) { const x = b.nodes[n] || (b.nodes[n] = {cost: 0, sessions: 0, active_s: 0});
+      x.cost += v.cost || 0; x.sessions += v.sessions || 0; x.active_s += v.active_s || 0; b.cost += v.cost || 0; b.sessions += v.sessions || 0; }
+  }
+  return [...out.values()];
+}
+const shortDay = (d) => `${+d.slice(8)} ${MES[+d.slice(5, 7) - 1]}`;
+
+function consumption() {
+  const t = (D.totals || {}).today || {}, w = (D.totals || {}).week || {};
+  const all = Object.values(D.projects || {}).reduce((a,p) => a + (p.cost || 0), 0);
+  const allTok = Object.values(D.projects || {}).reduce((a,p) => a + tok(p.tokens), 0);
+  const TH = D.thresholds, qq = D.quota;
+  const quota = (k, label) => {
+    if (!qq) return `<div class="row"><span>${label}</span><span class="muted">sin lectura</span></div>`;
+    const v = qq[k], l = qq.stale ? {col: 'var(--muted)', word: `última lectura conocida, hace ${ago(now - qq.ts)}`}
+      : !TH ? {col: 'var(--muted)', word: '⚠ umbrales: no se pudo leer thresholds.json'}
+      : k === 'five_pct' ? light(v, 'visor-quota-5h-amber', 'quota-5h') : light(v, 'visor-quota-7d-amber', 'visor-quota-7d-red');
+    return `<div class="row"><span><span class="dot" style="background:${l.col};margin-right:6px"></span>${label}</span><span${qq.stale ? ' class="muted"' : ''}><b>${v} %</b>${qq.stale ? ` · hace ${ago(now - qq.ts)}` : ''}</span></div>
+      <div class="meter" role="img" aria-label="${v} % usado, ${esc(l.word)}"><i style="width:${pct(v)}%;background:${l.col}"></i></div>
+      <div class="note" style="margin:-4px 0 8px">${esc(l.word)}</div>`;
+  };
+  const R = histRange(), nSess = Object.values(D.projects || {}).reduce((a,p) => a + (p.sessions || 0), 0);
+  const nDays = R ? buckets(() => 'x').reduce((a, b) => a + b.days, 0) : 0;
+  return `<section id="consumo"><h2>Consumo</h2>
+    <div class="cost2">
+      <div class="card"><div class="kicker">Equivalente API <span class="tag">estimado · piso</span></div>
+        <div class="trio">
+          <div><div class="l">Hoy</div>${money(t.cost, 'xl')}<div class="s">${fmtTok(tok(t))} tokens · ${t.msgs ?? 0} respuestas</div></div>
+          <div><div class="l">Últimos 7 días</div>${money(w.cost, 'l')}<div class="s">promedio ${money(w.cost != null ? w.cost / 7 : null)} al día · ${fmtTok(tok(w))} tokens</div></div>
+          <div><div class="l">Todo el historial</div>${money(all, 'l')}<div class="s">${nDays ? `promedio ${money(all / nDays)} al día en ${nDays} días` : ''}</div></div>
+        </div>
+        <div class="range">${R ? `del <b>${R.since}</b> al <b>${R.until}</b> · ${nSess} sesiones · ${fmtTok(allTok)} tokens` : 'historial aún sin rango'}</div>
+        ${t.unpriced_msgs ? `<div class="note">${t.unpriced_msgs} mensajes de hoy de un modelo sin precio: no suman.</div>` : ''}</div>
+      <div class="card"><div class="kicker">Cuota de la suscripción <span class="tag">límite real</span></div>
+        <div style="margin-top:8px">${quota('five_pct', 'Ventana de 5 horas')}${quota('week_pct', 'Ventana de 7 días')}</div>
+        <div class="note">${qq ? `leída en ${esc(lab(qq.node))} hace ${ago(now - qq.ts)}${qq.stale ? ' · ninguna statusline renderizó desde entonces: es la última conocida, en gris' : ''}` : 'aún no hay ninguna lectura guardada'}</div></div>
+    </div>
+    <div class="note"><b>Equivalente API</b>: tokens × precio de lista (entrada, salida, lectura y escritura de caché${D.prices_estimated ? '; la escritura sale de los multiplicadores 1,25× / 2× porque models.json aún no la trae' : ''}); lo que costaría por API, no lo que pagas. <b>Cuota</b>: el porcentaje de las ventanas de 5 h y 7 días de la suscripción, que es lo que de verdad te frena. Hoy y 7 días suman cada respuesta en su día; el historial, la semana y el mes suman cada sesión en el día en que empezó.</div>
+    ${usageCard()}${heatCard()}${localWork()}</section>`;
+}
+
+// Stacked bars per bucket and per machine, in SVG; one transparent column per bucket carries the
+// tooltip (hover, keyboard focus or tap). No library: CSP-safe, works offline.
+const TIPS = {};
+function stackChart(id, keys, val, tipRow, opts) {
+  const W = 720, H = 190, L = 46, B = 20, T = 8, n = keys.length, cw = (W - L - 6) / n;
+  const tot = keys.map(d => NODES.reduce((a, nd) => a + (val(nd, d) || 0), 0));
+  const max = Math.max(1e-9, ...tot), y = (v) => T + (H - T - B) * (1 - v / max);
+  const step = Math.max(1, Math.ceil(n / (opts.labels || 10))), fmt = opts.fmt || (d => d.slice(5));
+  TIPS[id] = keys.map((d, i) => `<b>${opts.head ? opts.head(i) : d}</b> · total ${usd(tot[i])}${opts.extra ? opts.extra(i) : ''}<br>` + NODES.map(nd => `${sw(nd)}${esc(lab(nd))}: ${tipRow(nd, d)}`).join('<br>'));
+  const cols = keys.map((d, i) => { let acc = 0; const x = L + i * cw;
+    const rects = NODES.map(nd => { const v = val(nd, d) || 0; if (v <= 0) return ''; const y1 = y(acc + v), y0 = y(acc); acc += v;
+      return `<rect x="${(x + 1).toFixed(1)}" y="${y1.toFixed(1)}" width="${Math.max(1, cw - 2).toFixed(1)}" height="${Math.max(1, y0 - y1).toFixed(1)}" rx="2" fill="${colorOf(nd)}"/>`; }).join('');
+    const lab_ = i % step === 0 || i === n - 1 ? `<text x="${(x + cw / 2).toFixed(1)}" y="${H - 6}" text-anchor="middle">${esc(fmt(d, i))}</text>` : '';
+    return rects + lab_ + `<rect class="col" x="${x.toFixed(1)}" y="${T}" width="${cw.toFixed(1)}" height="${H - T - B}" data-tip="${id}:${i}" tabindex="0" aria-label="${esc(opts.head ? opts.head(i) : d)}: ${usd(tot[i])}"/>`; }).join('');
+  const grid = [0, .5, 1].map(f => `<line class="grid" x1="${L}" x2="${W - 4}" y1="${y(max * f).toFixed(1)}" y2="${y(max * f).toFixed(1)}"/><text x="${L - 6}" y="${(y(max * f) + 3).toFixed(1)}" text-anchor="end">${usd(max * f)}</text>`).join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label)}">${grid}${cols}</svg>`;
+}
+const legend = () => `<div class="legend">${NODES.map(n => `<span>${sw(n)}${dev(n)}</span>`).join('')}<span>· hora de Lima · pasa el dedo o el cursor</span></div>`;
+
+// One chart, four lenses (F3 §11): last 8 days by response, or the whole history by day / ISO
+// week / month by session start. Stacked by device; the table behind "ver como tabla".
+const CG = {d8: '8 días', dia: 'por día', sem: 'por semana', mes: 'por mes'};
+function usageCard() {
+  const g = CG[S.cg] ? S.cg : 'd8', cols = NODES.map(n => `<th class="n">${esc(lab(n))}</th>`).join('');
+  let chart, head, rows, note;
+  if (g === 'd8') {
+    const days = []; for (let i = 7; i >= 0; i--) days.push(day(D.built - i*86400));
+    const u = (n, d) => ((D.nodes[n].usage || {}).by_day || {})[d];
+    chart = stackChart('cg', days, (n, d) => (u(n, d) || {}).cost, (n, d) => u(n, d) ? `${usd(u(n, d).cost)} · ${fmtTok(tok(u(n, d)))} tokens · ${u(n, d).msgs} respuestas` : '—', {label: 'Equivalente API por día y aparato, últimos 8 días', labels: 8, fmt: shortDay});
+    head = `<th>Día</th>${cols}`; rows = days.slice().reverse().map(d => `<tr><td class="mono">${d}</td>${NODES.map(n => `<td class="n">${u(n, d) ? fmtTok(tok(u(n, d))) + ' · ' + usd(u(n, d).cost) : '—'}</td>`).join('')}</tr>`).join('');
+    note = 'Cada respuesta suma en su día (hora de Lima).';
+  } else {
+    const B = buckets(g === 'dia' ? (d => d) : g === 'sem' ? isoWeek : (d => d.slice(0, 7))), by = Object.fromEntries(B.map(x => [x.k, x]));
+    const fmt = g === 'dia' ? (x => shortDay(x.k)) : g === 'sem' ? (x => shortDay(x.first)) : (x => MES[+x.k.slice(5) - 1] + ' ' + x.k.slice(2, 4));
+    const hd = g === 'dia' ? (x => x.k) : g === 'sem' ? (x => `${x.k} · ${shortDay(x.first)} – ${shortDay(x.last)}`) : (x => `${MES[+x.k.slice(5) - 1]} ${x.k.slice(0, 4)}`);
+    chart = B.length ? stackChart('cg', B.map(x => x.k), (n, k) => (by[k].nodes[n] || {}).cost, (n, k) => by[k].nodes[n] ? `${usd(by[k].nodes[n].cost)} · ${by[k].nodes[n].sessions} sesiones · ${hrs(by[k].nodes[n].active_s)}` : '—',
+      {label: 'Equivalente API ' + CG[g], labels: g === 'dia' ? 9 : 12, fmt: (k, i) => fmt(B[i]), head: (i) => hd(B[i]), extra: (i) => g === 'dia' ? '' : ` · ${usd(B[i].cost / B[i].days)}/día`}) : '<p class="empty">Sin historial.</p>';
+    head = `<th>Periodo</th><th class="n">Días</th>${cols}<th class="n">Total</th><th class="n">Prom./día</th><th class="n">Sesiones</th>`;
+    rows = B.slice().reverse().map(x => `<tr><td>${esc(hd(x))}</td><td class="n">${x.days}</td>${NODES.map(n => `<td class="n">${x.nodes[n] ? usd(x.nodes[n].cost) : '—'}</td>`).join('')}<td class="n">${money(x.cost)}</td><td class="n">${usd(x.cost / x.days)}</td><td class="n">${x.sessions}</td></tr>`).join('');
+    note = 'Cada sesión suma en el día en que empezó (la base del visor guarda sesiones, no horas).' + (g === 'sem' ? ' Semana ISO, lunes a domingo; la primera y la actual están incompletas y su promedio se calcula sobre sus días.' : '');
+  }
+  return `<div class="card" id="cgcard" style="margin-top:12px"><div class="cghead"><h3>Equivalente API por aparato</h3>
+    <div class="seg" role="tablist" aria-label="Agrupar por">${Object.entries(CG).map(([k, l]) => `<button class="btn${k === g ? ' on' : ''}" type="button" role="tab" aria-selected="${k === g}" data-cg="${k}">${l}</button>`).join('')}</div></div>
+    ${legend()}${chart}<details><summary>Ver como tabla</summary><div class="scroll"><table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div></details><div class="note">${note}</div></div>`;
+}
+const bindCG = () => document.querySelectorAll('#cgcard [data-cg]').forEach(x => x.onclick = () => { S.cg = x.dataset.cg; writeHash(); rerender('cgcard', usageCard, bindCG); });
+
+// Weekday x hour, Lima (F3 §11): when the owner programs. Each session's cost spread evenly over
+// the clock hours it was open (collect.py), so it is approximate and says so.
+const DW = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
+function heatCard() {
+  const H = D.heat || {}, ns = NODES.filter(n => H[n]); if (!ns.length) return '';
+  const v = (d, h) => ns.reduce((a, n) => a + ((H[n][d] || [])[h] || 0), 0);
+  let max = 1e-9, top = [0, 0], byD = DW.map(() => 0);
+  DW.forEach((_, d) => { for (let h = 0; h < 24; h++) { const x = v(d, h); byD[d] += x; if (x > max) { max = x; top = [d, h]; } } });
+  const tips = [], cells = DW.map((w, d) => `<span class="hd">${w}</span>` + Array.from({length: 24}, (_, h) => { const x = v(d, h);
+    tips.push(`<b>${w} ${h}:00–${h + 1}:00</b> · ≈ ${usd(x)}${ns.length > 1 ? '<br>' + ns.map(n => `${sw(n)}${esc(lab(n))} ${usd((H[n][d] || [])[h] || 0)}`).join(' · ') : ''}`);
+    return `<i style="--a:${Math.round(100 * Math.sqrt(x / max))}%" data-tip="hm:${tips.length - 1}" tabindex="0" aria-label="${w} ${h} h: ${usd(x)}"></i>`; }).join('')).join('');
+  TIPS.hm = tips;
+  const hours = '<span></span>' + Array.from({length: 24}, (_, h) => `<span class="hh">${h % 3 ? '' : h}</span>`).join('');
+  const bd = byD.indexOf(Math.max(...byD)), missing = NODES.filter(n => !H[n]);
+  return `<div class="card" style="margin-top:12px"><h3>A qué horas se programa · hora de Lima</h3>
+    <div class="heat">${hours}${cells}</div>
+    <div class="note">Más gasto: <b>${DW[top[0]]} de ${top[1]}:00 a ${top[1] + 1}:00</b>; el día más cargado es el <b>${DW[bd]}</b>. Aproximado: el coste de cada sesión se reparte por igual entre las horas que estuvo abierta (también las de pausa). Escala de raíz cuadrada para que las horas flojas se vean.${missing.length ? ` Sin datos aún de ${missing.map(lab).map(esc).join(', ')} (su colector no trae el mapa todavía).` : ''}</div></div>`;
+}
+
+// Work done by the local models (F3 §12). No savings figure: the manager records neither tokens nor
+// audio minutes per job, so a cloud price per job would be invented. Count only, by task.
+function localWork() {
+  const J = Object.values(D.models_inventory || {}).flatMap(m => (m && m.jobs) || []).filter(j => j.state === 'done');
+  if (!J.length) return '';
+  const by = {}; J.forEach(j => by[j.task] = (by[j.task] || 0) + 1);
+  return `<div class="card" style="margin-top:12px"><div class="kicker">Hecho por modelos locales <span class="tag">sin coste por API</span></div>
+    <div class="trio"><div><div class="l">Trabajos terminados</div><span class="usd l" style="color:var(--fg)">${J.length}</span></div>
+      <div><div class="l">Por tarea</div><div>${Object.entries(by).sort((a, b) => b[1] - a[1]).map(([t, n]) => `${esc(t)} <b>${n}</b>`).join(' · ')}</div></div></div>
+    <div class="note"><b>Equivalente evitado: no se calcula.</b> Haría falta que el gestor guarde los tokens de entrada y salida (o los minutos de audio) de cada trabajo; con eso, la fórmula sería tokens × precio de lista del modelo de nube de referencia, marcada como estimada. Sin esos datos, solo el conteo.</div></div>`;
+}
+
+// ---------------------------------------------------------------- projects (all time)
+const jobsOf = (name) => (D.jobs || []).filter(j => (j.repo || '').toLowerCase() === String(name).toLowerCase());
+// Projects table: sort by any number column, filter by device and activity dates, search by name.
+// All client side; the state lives in the hash (ps pd pq pf pt) so it survives the reload.
+const PCOLS = [['name', 'Proyecto'], [null, 'Aparato'], [null, 'Stack'], ['cost', '≈ USD', 1], ['sessions', 'Sesiones', 1], ['windows', 'Hilos', 1],
+  ['active_s', 'Horas', 1], ['prompts', 'Prompts', 1], ['subagents', 'Subagentes', 1], ['tokens', 'Tokens', 1], ['jobs', 'Trabajos', 1], ['last', 'Último']];
+const pval = (k, n, p) => k === 'name' ? n.toLowerCase() : k === 'tokens' ? tok(p.tokens) : k === 'jobs' ? (p.jobs || {}).n || 0 : p[k] || 0;
+const hoursOf = (v) => v.active_s ?? v.sessions ?? 0;
+function split(p) {
+  const e = Object.entries(p.nodes || {}).sort((a, b) => hoursOf(b[1]) - hoursOf(a[1]));
+  if (e.length < 2) return e.map(([n]) => dev(n)).join('');
+  const tot = e.reduce((a, [, v]) => a + hoursOf(v), 0) || 1;
+  return `<span class="split" title="reparto por horas activas">${e.map(([n, v]) => dev(n, `${lab(n)} ${(x => x && x < 1 ? '<1' : Math.round(x))(100 * hoursOf(v) / tot)} %`)).join('')}</span>`;
+}
+function projList() {
+  const q = (S.pq || '').toLowerCase(), f = S.pf ? isoTs(S.pf + 'T05:00:00Z') : null, t = S.pt ? isoTs(S.pt + 'T05:00:00Z') + 86400 : null;
+  const [k, dir] = (S.ps || 'cost:d').split(':');
+  return Object.entries(D.projects || {}).filter(([n, p]) => (!q || n.toLowerCase().includes(q)) && (!S.pd || (p.nodes || {})[S.pd])
+      && (!f || (p.last || 0) >= f) && (!t || (p.first || 0) < t))
+    .sort((a, b) => { const x = pval(k, ...a), y = pval(k, ...b); return (x < y ? -1 : x > y ? 1 : 0) * (dir === 'a' ? 1 : -1); });
+}
+function projRows() {
+  const all = S.pq || S.pd || S.pf || S.pt;
+  const techs = (p) => (p.icons || []).slice(0, 7).map(i => tchip(i, true)).join('');
+  return projList().map(([name, p], i) => `<tr class="click${i >= 12 && !all ? ' more' : ''}${S.p === name ? ' sel' : ''}" tabindex="0" data-p="${esc(name)}"><td><b>${esc(name)}</b></td>
+    <td>${split(p)}</td><td><span class="icons">${techs(p) || '<span class="muted">—</span>'}</span></td>
+    <td class="n">${money(p.cost)}</td><td class="n"><b>${p.sessions}</b></td><td class="n">${p.windows}</td><td class="n">${hrs(p.active_s)}</td><td class="n">${p.prompts}</td>
+    <td class="n">${p.subagents}</td><td class="n">${fmtTok(tok(p.tokens))}</td>
+    <td class="n">${p.jobs && p.jobs.n ? p.jobs.n : '—'}</td><td class="muted">${day(p.last)}</td></tr>`).join('') || '<tr><td colspan="12" class="empty">Ningún proyecto con esos filtros.</td></tr>';
+}
+function projects() {
+  const P = Object.keys(D.projects || {});
+  const hs = D.history_status || {};
+  const pending = Object.entries(hs).filter(([,h]) => h && h.complete === false).map(([n,h]) => `${lab(n)}: faltan ${h.pending_files} archivos`);
+  if (!P.length) return `<section id="proyectos"><h2>Proyectos · todo el historial</h2><div class="card empty">Sin historial todavía${pending.length ? ' (' + esc(pending.join(', ')) + ')' : ''}.</div></section>`;
+  const head = PCOLS.map(([k, l, num]) => `<th${num ? ' class="n"' : ''}${k ? ` data-s="${k}" tabindex="0"` : ''}>${l}</th>`).join('');
+  const val = (k) => esc(S[k] || '');
+  return `<section id="proyectos"><h2>Proyectos · todo el historial</h2>
+    <div id="detail"></div>
+    <div class="filters"><label>Buscar <input id="pq" type="search" value="${val('pq')}" placeholder="nombre" autocomplete="off"></label>
+      <label>Aparato <select id="pd"><option value="">todos</option>${NODES.map(n => `<option value="${esc(n)}"${S.pd === n ? ' selected' : ''}>${esc(lab(n))}</option>`).join('')}</select></label>
+      <label>Activo desde <input id="pf" type="date" value="${val('pf')}"></label><label>hasta <input id="pt" type="date" value="${val('pt')}"></label><span id="pn"></span></div>
+    <div class="card scroll sticky1" style="padding:6px 8px"><table><thead><tr>${head}</tr></thead><tbody id="ptb">${projRows()}</tbody></table>
+      ${P.length > 12 ? `<button class="btn" type="button" id="allp" style="margin:8px 6px">ver los ${P.length} proyectos</button>` : ''}</div>
+    <div class="note">Toca el título de una columna para ordenar (otra vez: al revés). Filtrar por aparato o fechas elige qué proyectos se ven; sus números siguen siendo de todo el historial. <b>Aparato</b> = reparto por horas activas.</div>
+    <div class="note">Toca un proyecto para ver su línea de tiempo, sus hilos, subagentes y trabajos. <b>Sesión</b> = un arranque o reanudación de Claude Code. <b>Hilo</b> = una conversación: las sesiones que se reanudan unas a otras (comparten respuestas). <b>Horas</b> = tiempo entre líneas del transcript con huecos de 30 min o menos. <b>Subagentes</b> = transcripts de subagente lanzados. <b>Trabajos</b> = corridas del enjambre con ese repo. <b>Stack</b> = los iconos de la ficha del proyecto en el Landing (pasa el cursor o toca uno); sin ficha, sin iconos.${pending.length ? ' Historial aún incompleto: ' + esc(pending.join(', ')) + '.' : ''}</div></section>`;
+}
+
+function detail(name) {
+  const box = document.getElementById('detail');
+  if (!box) return;
+  const p = (D.projects || {})[name];
+  document.querySelectorAll('#proyectos tr[data-p]').forEach(r => r.classList.toggle('sel', r.dataset.p === name));
+  if (!p) { box.innerHTML = ''; return; }
+  const tl = p.timeline || [], subs = p.subs || [], jobs = jobsOf(name);
+  const times = [...tl.flatMap(t => [t.start, t.end]), ...subs.flatMap(x => [x.start, x.end]), ...jobs.map(j => j.t0 || isoTs(j.start))].filter(Boolean);
+  const t0 = Math.min(...times, D.built) - 600, t1 = Math.max(...times, t0 + 3600) + 600;
+  tlSetup(tl, subs, jobs, t0, t1);
+  const T = p.tokens || {};
+  // threads: the timeline's sessions grouped by window (a resume chain = one conversation)
+  const thr = {}; tl.forEach((t, k) => { const w = t.window || 's' + k; const o = thr[w] || (thr[w] = {w, ks: [], start: t.start, end: t.end, cost: 0, sess: 0, nodes: new Set(), prompts: 0});
+    o.ks.push(k); o.start = Math.min(o.start || t.start, t.start); o.end = Math.max(o.end || 0, t.end || 0); o.cost += t.cost || 0; o.sess++; o.prompts += t.prompts || 0; o.nodes.add(t.node); });
+  const T3 = Object.values(thr).sort((a, b) => (b.start || 0) - (a.start || 0));
+  const thrRows = T3.map(o => `<tr class="click" tabindex="0" data-hl="w:${esc(o.w)}"><td class="mono">${dtm(o.start)}</td><td>${[...o.nodes].map(n => dev(n, false)).join('')}</td><td class="n">${o.sess}</td><td class="n">${o.prompts}</td><td class="n">${money(o.cost)}</td></tr>`).join('');
+  const subRows = subs.slice().reverse().map((x, i) => { const k = subs.length - 1 - i;
+    return `<tr class="click" tabindex="0" data-hl="a${k}"><td class="mono">${dtm(x.start)}</td><td>${x.type ? `<b>${esc(x.type)}</b>` : '<span class="muted">—</span>'}${x.desc ? `<div class="muted" style="white-space:normal;font-size:12px">${esc(x.desc)}</div>` : ''}</td><td>${dev(x.node, false)}</td><td class="n">${fmtTok(x.tokens)}</td><td class="n">${money(x.cost)}</td></tr>`; }).join('');
+  const jobRows = jobs.map((j, k) => `<tr class="click" tabindex="0" data-hl="j${k}"><td class="mono">${dtm(j.t0 || isoTs(j.start))}</td><td>${dev(j.node)}</td><td>${esc(j.type || '')}</td><td>${stIcon(j.status)}</td><td class="n">${j.cost_usd != null ? money(j.cost_usd) : '—'}</td></tr>`).join('');
+  const list = (title, head, rows, empty, note) => `<div class="card"><h3>${title}</h3>${rows ? `<div class="scroll" style="max-height:320px;overflow:auto"><table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>` : `<p class="empty">${empty}</p>`}${note ? `<div class="note">${note}</div>` : ''}</div>`;
+  const stack = (p.icons || []).map(i => tchip(i)).join(' ');
+  box.innerHTML = `<div class="card detail" style="margin-bottom:12px"><button class="btn x" type="button" id="close">cerrar ✕</button>
+    <h3>${esc(name)}</h3><div class="muted" style="font-size:12px">${day(p.first)} → ${day(p.last)} · ${Object.keys(p.nodes || {}).map(n => dev(n)).join(' + ')}${p.card ? ` · ficha del Landing: <code>${esc(p.card)}</code>` : ''}</div>
+    ${stack ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">${stack}</div>` : ''}
+    <div class="grid g-kpi" style="margin-top:12px">
+      ${kpi('≈ USD', money(p.cost, 'l'), 'equivalente API, todo el historial')}${kpi('Sesiones', `<b>${p.sessions}</b>`, `${p.windows} hilos · acumuladas`)}
+      ${kpi('Horas activas', hrs(p.active_s), `${p.prompts} prompts`)}${kpi('Subagentes', p.subagents, `${p.responses} respuestas`)}
+      ${kpi('Trabajos del enjambre', (p.jobs || {}).n || 0, (p.jobs || {}).n ? `${p.jobs.ok} ok · ${usd(p.jobs.cost)}` : 'ninguno')}</div>
+    <div class="row" style="margin-top:12px"><span>Tokens</span><span>entrada ${fmtTok(T.in)} · salida ${fmtTok(T.out)} · caché escrita ${fmtTok(T.cw)} (${fmtTok(T.cw1h)} a 1 h) · caché leída ${fmtTok(T.cr)}</span></div>
+    <h3 style="margin-top:14px" id="tlh">Línea de tiempo</h3>
+    <div class="tlbar"><button class="btn" type="button" data-z=".5" aria-label="acercar">+</button><button class="btn" type="button" data-z="2" aria-label="alejar">−</button><button class="btn" type="button" data-z="0">todo</button>
+      <span class="muted">rueda o pellizco: zoom · arrastra: mover · toca una marca: se resalta su fila abajo · hora de Lima</span></div>
+    <svg class="tl${S.hl ? ' focus' : ''}" id="tl" role="img" aria-label="Sesiones, subagentes y trabajos de ${esc(name)} en el tiempo"></svg>
+    <div class="legend"><span>${NODES.map(n => `${sw(n)}${esc(lab(n))}`).join(' ')} = sesión</span><span><span class="sw" style="background:var(--n3)"></span>subagente</span><span>◆ trabajo (verde ok · ámbar incompleto · rojo fallido)</span><span>· toca una fila de abajo para marcarla arriba</span></div>
+    <div class="tabs3">
+      ${list(`Hilos · ${T3.length}`, '<th>Inicio</th><th>Aparato</th><th class="n">Ses.</th><th class="n">Prompts</th><th class="n">≈ USD</th>', thrRows, 'Sin sesiones.', '')}
+      ${list(`Subagentes · ${p.subagents}`, '<th>Inicio</th><th>Tipo</th><th>Ap.</th><th class="n">Tokens</th><th class="n">≈ USD</th>', subRows, 'Ninguno.', subs.length < p.subagents ? `Con detalle los ${subs.length} más recientes; los totales cuentan ${p.subagents}.` : (D.redacted ? 'La copia web no lleva la descripción de cada subagente.' : ''))}
+      ${list(`Trabajos del enjambre · ${jobs.length}`, '<th>Inicio</th><th>Aparato</th><th>Tipo</th><th>Estado</th><th class="n">Coste</th>', jobRows, 'Ninguno con este repo.', jobs.length ? 'El detalle (log, rama, última señal) está en Historia.' : '')}
+    </div>
+    ${tl.length >= 60 ? '<div class="note">La línea de tiempo muestra las 60 sesiones más recientes; los totales cuentan todas.</div>' : ''}</div>`;
+  document.getElementById('close').onclick = () => { S.p = null; S.hl = null; writeHash(); detail(null); };
+  box.querySelectorAll('tr[data-hl]').forEach(r => { const go = () => mark(r.dataset.hl, r); r.onclick = go;
+    r.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }; });
+  bindTL(document.getElementById('tl')); drawTL();
+}
+
+// Project timeline (F3 §10). Drawn at the container's real pixel width (text never shrinks on a
+// phone), ticks on Lima midnights/hours, three fixed labelled lanes, wheel / pinch / drag zoom,
+// tooltips, and two-way highlight with the three lists below.
+let TL = null;
+const TSTEP = [900, 1800, 3600, 3*3600, 6*3600, 12*3600, 86400, 2*86400, 7*86400, 14*86400, 30*86400, 91*86400];
+function tlSetup(tl, subs, jobs, t0, t1) {
+  const tips = [], lanes = [];
+  const S_ = tl.map(t => { const s = t.start || t0, e = Math.max(t.end || s, s + 60);
+    let l = lanes.findIndex(end => end < s); if (l < 0) { l = lanes.length; lanes.push(0); } lanes[l] = e + (t1 - t0) * 0.002;
+    const sent = Object.entries(t.sent_to || {}).map(([n, c]) => `${esc(lab(t.node))}→${esc(lab(n))}: ${c} trabajo(s)`).join(' · ');
+    tips.push(`<b>${dtm(s)}</b> · ${sw(t.node)}${esc(lab(t.node))}<br>${hrs(t.active_s)} activas · ${t.prompts} prompts · ${t.subagents} subagentes<br>${fmtTok(t.tokens)} tokens · ${usd(t.cost)}${sent ? '<br>' + sent : ''}`);
+    return {s, e, l, i: tips.length - 1, node: t.node, w: t.window || '', sent: !!sent}; });
+  const A = subs.map(x => { tips.push(`<b>${dtm(x.start)}</b> · subagente${x.type ? ' <b>' + esc(x.type) + '</b>' : ''}${x.desc ? '<br>' + esc(x.desc) : ''}<br>${fmtTok(x.tokens)} tokens · ${usd(x.cost)}`);
+    return {s: x.start || t0, i: tips.length - 1}; });
+  const J = jobs.map(j => { const s = j.t0 || isoTs(j.start) || t0;
+    tips.push(`<b>${dtm(s)}</b> · trabajo del enjambre en ${esc(lab(j.node))}<br>${esc(j.type || '')} · ${j.status === 'ok' ? 'ok' : esc(j.status)}${j.cost_usd != null ? ' · ' + usd(j.cost_usd) : ''}${j.reason || j.why ? '<br>' + esc(deid(j.reason || j.why)) : ''}`);
+    return {s, i: tips.length - 1, c: j.status === 'ok' ? 'var(--good)' : j.status === 'incomplete' ? 'var(--warn)' : 'var(--crit)'}; });
+  TIPS.tl = tips;
+  TL = {S: S_, A, J, t0, t1, v: [t0, t1], nl: Math.max(1, lanes.length)};
+}
+const TG = 98, TR = 12;                                   // left gutter for the lane names, right margin
+function drawTL() {
+  const svg = document.getElementById('tl'); if (!svg || !TL) return;
+  const W = Math.max(300, svg.parentNode.clientWidth), H = 16, [v0, v1] = TL.v, pw = W - TG - TR;
+  const X = (t) => (TG + pw * (t - v0) / (v1 - v0)).toFixed(1);
+  const yS = 28, yA = yS + TL.nl * H + 12, yJ = yA + 26, h = yJ + 26;
+  const step = TSTEP.find(x => (v1 - v0) / x <= pw / 64) || TSTEP[TSTEP.length - 1];
+  let ticks = '';
+  for (let L = Math.ceil((v0 - 18000) / step) * step; L + 18000 <= v1; L += step) {     // Lima = UTC-5
+    const t = L + 18000, hm = dtm(t).slice(11), x = X(t);
+    ticks += `<line class="grid" x1="${x}" x2="${x}" y1="18" y2="${h - 2}"/><text x="${x}" y="13" text-anchor="middle">${step >= 86400 || hm === '00:00' ? shortDay(day(t)) : hm}</text>`;
+  }
+  const lane = (txt, y) => `<text class="lane" x="6" y="${y}">${txt}</text>`;
+  const seps = [yA - 7, yJ - 7].map(y => `<line class="sep" x1="0" x2="${W}" y1="${y}" y2="${y}"/>`).join('');
+  const ses = TL.S.map((o, k) => o.e < v0 || o.s > v1 ? '' : `<rect data-k="s${k}" data-w="${esc(o.w)}" x="${X(o.s)}" y="${yS + o.l * H}" width="${Math.max(3, X(o.e) - X(o.s))}" height="${H - 5}" rx="3" fill="${colorOf(o.node)}" data-tip="tl:${o.i}" tabindex="0"/>`
+    + (o.sent ? `<circle cx="${X(o.e)}" cy="${yS + o.l * H + (H - 5) / 2}" r="4" fill="var(--n2)" stroke="var(--bg)" stroke-width="1.5"/>` : '')).join('');
+  const sub = TL.A.map((o, k) => o.s < v0 || o.s > v1 ? '' : `<rect data-k="a${k}" x="${X(o.s) - 1.5}" y="${yA}" width="3" height="13" rx="1" fill="var(--n3)" data-tip="tl:${o.i}" tabindex="0"/>`).join('');
+  const job = TL.J.map((o, k) => o.s < v0 || o.s > v1 ? '' : `<path data-k="j${k}" d="M${X(o.s)} ${yJ}l6 6.5-6 6.5-6-6.5z" fill="${o.c}" data-tip="tl:${o.i}" tabindex="0"/>`).join('');
+  svg.setAttribute('viewBox', `0 0 ${W} ${h}`); svg.style.height = h + 'px';
+  svg.innerHTML = `<defs><clipPath id="tlc"><rect x="${TG - 6}" y="0" width="${pw + 12}" height="${h}"/></clipPath></defs>${seps}
+    ${lane('sesiones', yS + Math.min(TL.nl, 2) * H / 2 + 4)}${lane('subagentes', yA + 11)}${lane('trabajos', yJ + 11)}<g clip-path="url(#tlc)">${ticks}${ses}${sub}${job}</g>`;
+  if (S.hl) mark(S.hl);
+}
+function bindTL(svg) {
+  if (!svg) return;
+  const P = new Map(); let moved = false;
+  const tAt = (cx) => { const r = svg.getBoundingClientRect(); return TL.v[0] + (TL.v[1] - TL.v[0]) * Math.min(1, Math.max(0, (cx - r.left - TG) / (r.width - TG - TR))); };
+  const setV = (a, span) => { span = Math.min(TL.t1 - TL.t0, Math.max(1800, span)); a = Math.min(Math.max(a, TL.t0), TL.t1 - span); TL.v = [a, a + span]; drawTL(); };
+  const zoom = (f, cx) => { const [a, b] = TL.v, ta = cx == null ? (a + b) / 2 : tAt(cx), sp = Math.max(1800, Math.min(TL.t1 - TL.t0, (b - a) * f)); setV(ta - (ta - a) * sp / (b - a), sp); };
+  svg.addEventListener('wheel', e => { e.preventDefault(); zoom(e.deltaY > 0 ? 1.25 : .8, e.clientX); }, {passive: false});
+  svg.addEventListener('pointerdown', e => { P.set(e.pointerId, e.clientX); moved = false; });
+  svg.addEventListener('pointermove', e => { if (!P.has(e.pointerId)) return;
+    const prev = [...P.values()], old = P.get(e.pointerId); P.set(e.pointerId, e.clientX);
+    if (P.size === 2) { const now_ = [...P.values()], d0 = Math.abs(prev[0] - prev[1]), d1 = Math.abs(now_[0] - now_[1]);
+      if (d0 > 8 && d1 > 8) { moved = true; zoom(d0 / d1, (now_[0] + now_[1]) / 2); } return; }
+    if (!moved && Math.abs(e.clientX - old) < 4) { P.set(e.pointerId, old); return; }
+    if (!moved) { moved = true; svg.setPointerCapture(e.pointerId); }
+    const r = svg.getBoundingClientRect(); setV(TL.v[0] - (e.clientX - old) / (r.width - TG - TR) * (TL.v[1] - TL.v[0]), TL.v[1] - TL.v[0]); });
+  const up = e => P.delete(e.pointerId); svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+  svg.addEventListener('click', e => { if (moved) return; const el = e.target.closest('[data-k]'); if (!el) return;
+    const key = el.dataset.w ? 'w:' + el.dataset.w : el.dataset.k; mark(key);
+    const r = document.querySelector(`#detail tr[data-hl="${CSS.escape(key)}"]`); if (r) r.scrollIntoView({block: 'nearest', behavior: 'smooth'}); });
+  svg.addEventListener('dblclick', () => setV(TL.t0, TL.t1 - TL.t0));
+  document.querySelectorAll('.tlbar [data-z]').forEach(b => b.onclick = () => +b.dataset.z ? zoom(+b.dataset.z) : setV(TL.t0, TL.t1 - TL.t0));
+}
+addEventListener('resize', () => drawTL());
+
+// Highlight on the timeline what a row of the three lists points at; dim the rest.
+function mark(key, row) {
+  const svg = document.getElementById('tl'); if (!svg) return;
+  const same = S.hl === key && row; S.hl = same ? null : key;
+  svg.querySelectorAll('.hl').forEach(e => e.classList.remove('hl'));
+  document.querySelectorAll('#detail tr.sel').forEach(r => r.classList.remove('sel'));
+  svg.classList.toggle('focus', !!S.hl);
+  if (!S.hl) return;
+  const els = key.startsWith('w:') ? [...svg.querySelectorAll('[data-w]')].filter(e => e.dataset.w === key.slice(2)) : [...svg.querySelectorAll(`[data-k="${key}"]`)];
+  els.forEach(e => e.classList.add('hl'));
+  document.querySelectorAll(`#detail tr[data-hl="${CSS.escape(key)}"]`).forEach(r => r.classList.add('sel'));
+  if (row) { document.getElementById('tlh').scrollIntoView({behavior: 'smooth', block: 'start'}); if (els[0]) setTimeout(() => showTip(els[0]), 350); }
+}
+
+// ---------------------------------------------------------------- local models
+// Local models as a live inventory (F3 part 4): one card per model with its family logo and colour,
+// the real model name next to the manager's key, and the owner's verdict (status + nota, stored by
+// the manager in ~/modelos/estado.json). Quality per task as bars, best first; ★ = marked sirve/en uso.
+const MST = {'en uso': 'var(--accent)', 'sirve': 'var(--good)', 'por probar': 'var(--muted)', 'no sirve': 'var(--crit)', 'descartado': 'var(--border)'};
+const stOf = (m) => m.status || 'por probar';
+const fam = (f) => icon('mf-' + f) || {};
+const famIc = (f) => { const i = icon('mf-' + f); return i ? `<span class="lg mf" style="${cvars(i)}" title="${esc(i.name)}">${svgOf(i, 'mf-' + f)}</span>` : ''; };
+const med = (a) => { a = a.filter(x => x != null).sort((x, y) => x - y); return a.length ? a[a.length >> 1] : null; };
+function models() {
+  const inv = D.models_inventory || {}, names = Object.keys(inv);
+  if (!names.length) return `<section id="modelos"><h2>Modelos locales</h2><div class="card empty">El gestor de modelos no respondió /catalog en la última vuelta (o el colector del aparato aún no lo lee).</div></section>`;
+  return `<section id="modelos"><h2>Modelos locales</h2>${names.map(n => modelsOf(n, inv[n])).join('')}</section>`;
+}
+function modelsOf(n, c) {
+  const K = {}; (c.models || []).forEach(m => { const k = K[m.key] || (K[m.key] = {...m, tasks: [], rows: []}); k.tasks.push(m.task); k.rows.push(m); });
+  const M = c.measurements || [], J = c.jobs || [], mDay = (r) => r.ts ? day(r.ts) : (r.date || '');
+  const tasks = [...new Set((c.models || []).map(m => m.task))].sort(), days = [...new Set(M.map(mDay).filter(Boolean))].sort().reverse();
+  const okT = (t) => !S.mt || t === S.mt, okD = (d) => !S.md || d === S.md, okS = (m) => !S.ms || stOf(m) === S.ms, order = Object.keys(MST);
+  const cards = Object.values(K).filter(m => m.tasks.some(okT) && okS(m)).sort((a, b) => order.indexOf(stOf(a)) - order.indexOf(stOf(b)) || a.key.localeCompare(b.key)).map(m => {
+    const l = m.rows.map(r => r.last).filter(Boolean).sort((x, y) => (y.date || '').localeCompare(x.date || ''))[0];
+    return `<div class="card mcard" style="--fc:${(fam(m.family).color || {}).d || 'var(--muted)'}"><div class="mh">${famIc(m.family)}<div><b>${esc(m.name || (m.repo || '').split('/').pop() || m.key)}</b>
+      <div class="muted mono" style="font-size:11px">${esc(m.key)} · ${esc(fam(m.family).name || '')}</div></div></div>
+      <div class="mt">${m.tasks.map(t => `<span class="chip">${esc(t)}</span>`).join('')}${m.gb != null ? `<span class="muted">${m.gb} GB</span>` : ''}${m.downloaded ? '' : '<span class="muted">no descargado</span>'}</div>
+      <div class="medit" data-mk="${esc(m.key)}"><button class="mst" type="button" style="--sc:${MST[stOf(m)]}"${D.redacted ? ' disabled' : ' title="cambiar estado"'}>${esc(stOf(m))}${m.status ? '' : ' · sin marcar'}</button>
+      ${m.nota ? `<div class="muted" style="font-size:12px">${esc(m.nota)}</div>` : ''}</div>
+      <div class="muted" style="font-size:12px">${l ? `${l.ok === false ? '✗ ' : ''}${esc(l.quality_label || '')} · ${l.speed != null ? esc(l.speed) + ' ' + esc(l.speed_unit || '') : ''} · ${esc(l.date || '')}` : 'sin medir'}</div></div>`; }).join('');
+  const best = [], bars = (S.mt ? [S.mt] : tasks).map(t => {
+    const by = {}; M.filter(r => r.task === t && okD(mDay(r)) && r.quality != null).forEach(r => { if (!by[r.key] || (r.ts || 0) >= (by[r.key].ts || 0)) by[r.key] = r; });
+    const B = Object.values(by).sort((x, y) => y.quality - x.quality); if (!B.length) return '';
+    const mx = Math.max(...B.map(r => r.quality)) || 1, good = (k) => ['en uso', 'sirve'].includes((K[k] || {}).status);
+    const top = B.find(r => good(r.key)); if (top) best.push(`${esc(t)}: <b>${esc(top.key)}</b>`);
+    return `<div class="qbars"><h4>${esc(t)} <span class="muted">· ${esc(B[0].quality_label || 'calidad')}</span></h4>${B.map(r => { const m = K[r.key] || {};
+      const tm = med(J.filter(j => j.model === r.key && j.task === t && j.state === 'done').map(j => j.run_s));
+      return `<div class="qb${good(r.key) ? ' ok' : ''}" style="--w:${(100 * r.quality / mx).toFixed(1)}%;--fc:${(fam(m.family).color || {}).d || 'var(--muted)'}"><span>${famIc(m.family)}${esc(r.key)}${good(r.key) ? ' ★' : ''}</span><i></i>
+        <span class="n">${esc(r.quality)} · ${tm != null ? 'mediana ' + sec(tm) : r.speed != null ? esc(r.speed) + ' ' + esc(String(r.speed_unit || '').replace(/\s*\(.*\)/, '')) : '—'}</span></div>`; }).join('')}</div>`; }).join('');
+  const mRows = M.filter(r => okT(r.task) && okD(mDay(r))).map(r => `<tr><td class="mono">${r.ts ? (r.ts_from === 'archivo' ? '~' : '') + dtm(r.ts) : esc(r.date || '—')}</td>
+      <td><b>${esc(r.key)}</b></td><td>${esc(r.task)}</td><td>${r.ok ? '<span class="st-ok">✓</span>' : '<span class="st-bad">✗</span>'}</td>
+      <td class="n">${r.quality != null ? esc(r.quality) : '—'}</td><td class="n">${r.speed != null ? esc(r.speed) + ' ' + esc(r.speed_unit || '') : '—'}</td><td class="n">${r.footprint_mb ? (r.footprint_mb/1024).toFixed(1) + ' GB' : '—'}</td><td class="wrap muted">${esc(r.note || '')}</td></tr>`).join('');
+  const jRows = J.filter(j => okT(j.task) && okD(day(j.created))).slice(0, 60).map(j => `<tr><td class="mono">${dtm(j.created)}</td><td>${esc(j.task)}</td><td>${esc(j.model || '—')}</td>
+      <td>${j.state === 'done' ? '<span class="st-ok">✓ hecho</span>' : j.state === 'failed' ? '<span class="st-bad">✗ falló</span>' : esc(j.state)}</td><td class="n">${sec(j.wait_s)}</td><td class="n">${sec(j.load_s)}</td><td class="n">${sec(j.run_s)}</td><td class="n">${j.peak_footprint_mb ? (j.peak_footprint_mb/1024).toFixed(1) + ' GB' : '—'}</td></tr>`).join('');
+  const sel = (f, label, opts) => `<label>${label} <select data-f="${f}"><option value="">todos</option>${opts.map(o => `<option${o === S[f] ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></label>`;
+  return `<div class="muted" style="font-size:12px;margin-bottom:8px">${dev(n)} · ${Object.keys(K).length} modelos${c.budget_mb ? ` · presupuesto de memoria ${(c.budget_mb/1024).toFixed(1)} GB` : ''}</div>
+    <div class="filters">${sel('mt', 'Tarea', tasks)}${sel('ms', 'Estado', order)}${sel('md', 'Medido el', days)}<span>${S.mt || S.md || S.ms ? `<a href="#modelos" id="mclear">quitar filtros</a>` : ''}</span></div>
+    <div class="mgrid">${cards || '<p class="empty">Ninguno con este filtro.</p>'}</div>
+    <div class="card" style="margin-top:12px"><h3>Calidad por tarea</h3>${best.length ? `<div class="note" style="margin-top:0">Los que sirven, el mejor medido: ${best.join(' · ')}</div>` : ''}<div class="qgrid">${bars || '<p class="empty">Sin mediciones con este filtro.</p>'}</div>
+      <div class="note">Una barra por modelo: su última medición de calidad en esa tarea (la escala de cada tarea es la suya). Etiqueta: calidad · mediana de duración de sus trabajos en el gestor, o la velocidad del banco si aún no tiene trabajos. ★ = marcado «sirve» o «en uso».</div></div>
+    <details class="card" style="margin-top:12px"><summary>ver las ${M.length} mediciones y los ${J.length} trabajos del gestor</summary>
+      <div class="scroll"><table><thead><tr><th>Fecha y hora</th><th>Modelo</th><th>Tarea</th><th>Ok</th><th class="n">Calidad</th><th class="n">Velocidad</th><th class="n">Memoria</th><th>Nota</th></tr></thead><tbody>${mRows}</tbody></table></div>
+      <div class="scroll" style="margin-top:10px"><table><thead><tr><th>Creado</th><th>Tarea</th><th>Modelo</th><th>Estado</th><th class="n">Espera</th><th class="n">Carga</th><th class="n">Corrida</th><th class="n">Memoria</th></tr></thead><tbody>${jRows}</tbody></table></div>
+      <div class="note">Mediciones: cada corrida del banco (<code>measurements.jsonl</code>); <b>~hora</b> = hora del archivo de resultado. Trabajos: hasta 60, con el modelo que eligió el gestor.</div></details>
+    <div class="note">Estado: lo marca el owner (${D.redacted ? 'desde el visor local' : 'toca la etiqueta; se guarda en el gestor de la Mac por el túnel <code>ssh -L 8765:127.0.0.1:8765 mac</code> o con <code>enjambre modelo</code>'}). Sin marcar = por probar. Logos: simple-icons (CC0) o monograma si la marca no está ahí.</div>`;
+}
+// Status editor (local copy only): PATCH the manager through the tunnel; without it, the command.
+function editModel(box) {
+  const k = box.dataset.mk, rows = Object.values(D.models_inventory || {}).flatMap(c => c.models || []).filter(m => m.key === k), m = rows[0] || {};
+  box.innerHTML = `<select>${Object.keys(MST).map(x => `<option${x === stOf(m) ? ' selected' : ''}>${x}</option>`).join('')}</select>
+    <input maxlength="200" placeholder="nota (opcional)" value="${esc(m.nota || '')}"><button class="btn" type="button">guardar</button><div class="msg muted" style="font-size:12px"></div>`;
+  const [st, nt] = [box.querySelector('select'), box.querySelector('input')];
+  box.querySelector('button').onclick = async () => {
+    const body = {status: st.value, nota: nt.value.trim()}, msg = box.querySelector('.msg');
+    try { const r = await fetch('http://127.0.0.1:8765/catalog/' + encodeURIComponent(k), {method: 'PATCH', headers: {'content-type': 'application/json'}, body: JSON.stringify(body)});
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      rows.forEach(x => Object.assign(x, body)); rerender('modelos', models, bindModels);
+    } catch (e) { msg.innerHTML = `Sin túnel al gestor (${esc(e.message)}). Ejecuta en el PC:<br><code>python enjambre.py modelo ${esc(k)} --status "${esc(body.status)}"${body.nota ? ` --nota "${esc(body.nota.replace(/"/g, "'"))}"` : ''}</code>`; }
+  };
+}
+
+// ---------------------------------------------------------------- history
+function allJobs() {
+  const q = D.queue || {}, seen = new Set((D.jobs || []).map(j => j.id));
+  const live_ = [...(q.running || []).map(x => ({...x, status: 'running'})), ...(q.queue || []).map(x => ({...x, status: 'queued'}))]
+    .filter(x => x.id && !seen.has(x.id)).map(x => ({id: x.id, node: x.node, type: x.worker, status: x.status, t0: typeof x.enqueued === 'string' ? isoTs(x.enqueued) : x.enqueued, repo: x.repo}));
+  return [...live_, ...(D.jobs || [])];
+}
+function hist() {
+  const J = allJobs(), repos = [...new Set(J.map(j => j.repo).filter(Boolean))].sort();
+  const shown = J.filter(j => !S.jp || j.repo === S.jp);
+  const rows = shown.slice(0, 60).map(r => `<tr class="click${S.j === r.id ? ' sel' : ''}${SEEN && (r.t0 || 0) > SEEN ? ' new' : ''}" tabindex="0" data-j="${esc(r.id)}"><td class="mono">${dtm(r.t0 || isoTs(r.start))}</td><td>${esc(r.repo || '—')}</td><td>${dev(r.node)}</td><td>${esc(r.type || '')}</td>
+    <td>${stIcon(r.status)}${r.test ? '<span class="few">prueba</span>' : ''}${(r.status === 'failed' || r.status === 'incomplete') && (r.reason || r.why) ? `<div class="muted wrap" style="font-size:12px;max-width:42ch">${esc(deid(r.reason || r.why))}</div>` : ''}</td><td class="n">${sec(r.duration_s)}</td><td class="n">${r.cost_usd != null ? money(r.cost_usd) : '—'}</td></tr>`).join('');
+  const cmp = (D.compare || []).map(r => `<tr><td>${esc(r.type)}${r.few ? '<span class="few">pocos datos</span>' : ''}</td><td>${dev(r.node)}</td><td class="n">${r.n}</td>
+    <td class="n">${r.success_pct}%</td><td class="n">${sec(r.median_total_s)}</td>
+    <td class="n">${r.separable_n ? sec(r.median_model_s) : '<span class="muted">—</span>'}</td><td class="n">${r.separable_n ? sec(r.median_tool_s) : '<span class="muted">—</span>'}</td>
+    <td class="n">${r.cost_usd != null ? usd(r.cost_usd) : '—'}</td></tr>`).join('');
+  return `<section id="historia"><h2>Historia</h2>
+    <div class="card"><h3>Trabajos del enjambre · ${shown.length}${S.jp ? ` de ${J.length}` : ''}</h3>
+      <div class="filters"><label>Proyecto <select id="jproj"><option value="">todos</option>${repos.map(r => `<option${r === S.jp ? ' selected' : ''}>${esc(r)}</option>`).join('')}</select></label><span>toca un trabajo para ver su detalle</span></div>
+      <div id="jdetail"></div>
+      ${rows ? `<div class="scroll"><table><thead><tr><th>Inicio</th><th>Proyecto</th><th>Aparato</th><th>Tipo</th><th>Estado</th><th class="n">Duración</th><th class="n">Coste</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<p class="empty">Sin trabajos.</p>'}
+      <div class="note">Hasta 60 filas, más recientes primero. Incompleto = salió con 0 pero Claude registró permisos denegados o la rama no se subió.</div></div>
+    <div class="card scroll" style="margin-top:12px"><h3>Dónde rinde cada tarea</h3>${cmp ? `<table><thead><tr><th>Tarea</th><th>Aparato</th><th class="n">n</th><th class="n">Éxito</th><th class="n">Mediana</th><th class="n">Nube</th><th class="n">Local</th><th class="n">Coste</th></tr></thead><tbody>${cmp}</tbody></table>` : '<p class="empty">Sin datos.</p>'}
+      <div class="note">Con menos de 5 corridas una celda no permite decir qué aparato rinde mejor. "Nube" = espera a la API (<code>duration_api_ms</code>).</div></div></section>`;
+}
+
+function jobDetail(id) {
+  const box = document.getElementById('jdetail'); if (!box) return;
+  document.querySelectorAll('#historia tr[data-j]').forEach(r => r.classList.toggle('sel', r.dataset.j === id));
+  const j = allJobs().find(x => x.id === id);
+  if (!j) { box.innerHTML = ''; return; }
+  const d = (D.job_detail || {})[id], live_ = j.status === 'running';
+  const sig = d && d.signal ? `hace ${ago(now - d.signal)} · ${esc(d.signal_file)} (${dtm(d.signal)})` : null;
+  const b = d && d.beat, beat = b ? [b.elapsed_s != null ? `${sec(b.elapsed_s)} corriendo` : '', b.pct != null ? `${b.pct} %` : '',
+    b.turns != null ? `${b.turns} turnos` : '', b.last_tool ? `última herramienta ${esc(b.last_tool)}` : '',
+    b.cost_est_usd != null ? `≈ ${usd(b.cost_est_usd)} estimado` : '', b.attempt > 1 ? `intento ${b.attempt}` : ''].filter(Boolean).join(' · ') : '';
+  const kv = (k, v) => v == null || v === '' ? '' : `<span>${k}</span><span>${v}</span>`;
+  const wl = (D.job_logs || {})[id];
+  const logs = wl && wl !== 'local' ? `<div class="muted" style="font-size:12px;margin-top:8px">log · últimas ${wl.split('\n').length} líneas (pasó la redacción)</div><pre class="log">${esc(wl)}</pre>`
+    : wl === 'local' ? '<div class="note">Log solo en local: tiene rutas o nombres que la copia web no publica.</div>'
+    : d && d.log ? Object.entries(d.log).map(([f, t]) => `<div class="muted" style="font-size:12px;margin-top:8px">${esc(f)} · últimas ${t.split('\n').length} líneas</div><pre class="log">${esc(t)}</pre>`).join('') : '';
+  box.innerHTML = `<div class="card detail" style="margin:0 0 12px"><button class="btn x" type="button" id="jclose">cerrar ✕</button>
+    <h3>${d && d.title ? esc(d.title) : 'Trabajo'} <span class="muted mono" style="font-weight:400;font-size:12px">${esc(id)}</span></h3>
+    <div class="kv">
+      ${kv('Estado', stIcon(j.status) + (j.test ? ' <span class="few">prueba</span>' : ''))}${kv('Por qué', (j.reason || j.why) ? `<b>${esc(deid(j.reason || j.why))}</b>` : null)}${kv('Proyecto', esc(j.repo || '—'))}${kv('Aparato', dev(j.node))}${kv('Tipo', esc(j.type || '') + (j.worker && j.worker !== j.type ? ` · worker ${esc(j.worker)}` : ''))}
+      ${kv('Inicio', dtm(j.t0 || isoTs(j.start)))}${kv('Fin', j.end ? dtm(isoTs(j.end)) : null)}${kv('Duración', j.duration_s != null ? sec(j.duration_s) : null)}
+      ${kv('Coste', j.cost_usd != null ? money(j.cost_usd) : '<span class="muted">sin coste registrado (worker local o stub)</span>')}
+      ${kv('Rama', j.branch ? `<code>${esc(j.branch)}</code> · ${j.pushed ? '<span class="st-ok">subida</span>' : '<span class="st-mid">sin subir</span>'}` : (j.pushed != null ? (j.pushed ? 'subida' : 'sin subir') : null))}
+      ${kv('Ruta', j.route_reason ? esc(deid(j.route_reason)) : null)}${kv('Permisos denegados', j.permission_denials ? esc(j.permission_denials) : null)}
+      ${kv('Resultado', j.result ? `<span style="white-space:pre-wrap">${esc(j.result)}</span>` : null)}
+      ${b ? kv('Latido', `<b>${sig}</b>${beat ? `<br>${beat}` : ''}${d.last ? `<br><span class="muted">${esc(d.last)}</span>` : ''}`)
+        : kv(live_ ? 'Latido' : 'Última señal', sig ? (live_ ? `<b>${sig}</b>` : sig) : `<span class="muted">${D.redacted ? 'solo en el visor local' : `sin carpeta local: no pasó por la cola de ${esc(lab('win'))}`}</span>`)}
+    </div>
+    ${logs || `<div class="note">${D.redacted ? 'La copia web no lleva logs, rama ni resultado: se ven en el visor local.' : d ? 'El log está vacío.' : 'Sin log local: el trabajo se lanzó a mano (<code>enjambre run</code>), no desde la cola.'}</div>`}
+    <div class="note">${b ? '<b>Latido</b> real: el supervisor del trabajo largo (<code>jobrun.py</code>) reescribe su <code>status.json</code> en el aparato en cada latido; si el supervisor murió, el trabajo sale como «muerto».' : '<b>Última señal</b> = la hora del archivo más nuevo en <code>state/&lt;cola&gt;/&lt;id&gt;/</code>. Es derivada: un trabajo corto no manda latidos (solo los largos, con <code>jobrun.py</code>).'}</div></div>`;
+  document.getElementById('jclose').onclick = () => { S.j = null; writeHash(); jobDetail(null); };
+}
+
+function foot() {
+  return `<footer class="foot">
+    <p><b>Dos números, nunca uno:</b> el equivalente API es un piso estimado (precio de lista × tokens, incluida la escritura de caché); la cuota es el límite real de la suscripción. Gastar «$40 equivalente» no cuesta $40.</p>
+    <p>Semáforo: verde, ámbar y rojo salen de <code>~/.claude/rules/thresholds.json</code> (<code>quota-5h</code> y los <code>visor-*</code>: disco, memoria, cuota de 5 h y 7 días, trabajos fallidos e incompletos). Si un umbral no se puede leer, el color es gris y lo dice: nunca un verde inventado.</p>
+    <p>Historial: base propia del visor en cada aparato (<code>~/.enjambre/visor/history.db</code>), que no se borra cuando Claude Code limpia sus transcripts viejos.${histRange() ? ` Hoy cubre del ${histRange().since} al ${histRange().until}.` : ''}</p>
+    <p>Aparatos: el nombre sale de <code>label</code> en <code>nodes.toml</code>. Iconos de tecnología: los mismos logos y colores de marca que el Landing.</p>
+    <p>${D.redacted ? `Esta copia web se sube desde el PC cada ${D.every_min || 10} min (la página vuelve a pedirla cada 2 min).` : 'El visor local se reconstruye cada 5 min (tarea programada) y, con «en vivo», la página se recarga sola cuando hay una instantánea nueva; <code>enjambre visor --follow</code> la reconstruye cada 30 s mientras esté abierto.'}</p>
+    <p>Cuota: sale de la statusline, que solo se dibuja cuando una ventana de Claude Code responde. Se guarda la última lectura con su hora (<code>history.db</code>); si tiene más de 30 min se muestra en gris con «hace N h», nunca «sin lectura».</p>
+    <p>Fallidos: cada uno lleva su causa (<code>razones.py</code>) y su log en <code>state/jobs/&lt;id&gt;/log</code>. Las pruebas (sandbox, stub, pruebas de fuego, <code>test: true</code>) van aparte y no tiñen el semáforo.</p>
+    <p>No mide: presupuestos en dólares (no hay ninguno definido) ni qué modelo local está cargado ahora mismo.</p></footer>`;
+}
+
+// ---------------------------------------------------------------- wiring
+function bindProjects() {
+  const tb = document.getElementById('ptb'); if (!tb) return;
+  const hdr = () => { const [k, d] = (S.ps || 'cost:d').split(':');
+    document.querySelectorAll('#proyectos th[data-s]').forEach(th => th.setAttribute('aria-sort', th.dataset.s === k ? (d === 'a' ? 'ascending' : 'descending') : 'none'));
+    document.getElementById('pn').textContent = `${tb.querySelectorAll('tr[data-p]').length} de ${Object.keys(D.projects || {}).length}`; };
+  const redraw = () => { writeHash(); tb.innerHTML = projRows(); bindProjRows(); hdr(); };
+  document.querySelectorAll('#proyectos th[data-s]').forEach(th => { const go = () => { const [k, d] = (S.ps || 'cost:d').split(':'), c = th.dataset.s;
+      S.ps = c + ':' + (k === c ? (d === 'd' ? 'a' : 'd') : (c === 'name' ? 'a' : 'd')); redraw(); };
+    th.onclick = go; th.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }; });
+  for (const id of ['pq', 'pd', 'pf', 'pt']) { const el = document.getElementById(id); el.oninput = el.onchange = () => { S[id] = el.value; redraw(); }; }
+  bindProjRows(); hdr();
+}
+function bindProjRows() {
+  document.querySelectorAll('#proyectos tr.click').forEach(r => {
+    const go = () => { S.p = r.dataset.p; S.hl = null; writeHash(); detail(S.p);
+      document.getElementById('detail').scrollIntoView({behavior: 'smooth', block: 'start'}); };
+    r.addEventListener('click', e => { if (e.target.closest('.lchip')) return; go(); });
+    r.addEventListener('keydown', e => { if (e.target === r && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); go(); } });
+  });
+}
+function bind() {
+  bindProjects();
+  const allp = document.getElementById('allp');
+  if (allp) allp.onclick = () => { const sec = document.getElementById('proyectos'); sec.classList.toggle('all');
+    allp.textContent = sec.classList.contains('all') ? 'ver solo los 12 primeros' : `ver los ${Object.keys(D.projects).length} proyectos`; };
+  document.querySelectorAll('#alertas tr[data-j]').forEach(r => {
+    const go = () => { if (!r.dataset.j) return; S.j = r.dataset.j; writeHash(); jobDetail(S.j);
+      document.getElementById('jdetail').scrollIntoView({behavior: 'smooth', block: 'start'}); };
+    r.onclick = go; r.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } };
+  });
+  bindModels(); bindHist(); bindCG();
+}
+function bindModels() {
+  document.querySelectorAll('#modelos select[data-f]').forEach(s => s.onchange = () => { S[s.dataset.f] = s.value; writeHash(); rerender('modelos', models, bindModels); });
+  const c = document.getElementById('mclear'); if (c) c.onclick = (e) => { e.preventDefault(); S.mt = S.md = S.ms = ''; writeHash(); rerender('modelos', models, bindModels); };
+  if (!D.redacted) document.querySelectorAll('#modelos .mst').forEach(b => b.onclick = () => editModel(b.closest('.medit')));
+}
+function bindHist() {
+  const sel = document.getElementById('jproj');
+  if (sel) sel.onchange = () => { S.jp = sel.value; writeHash(); rerender('historia', hist, bindHist); };
+  document.querySelectorAll('#historia tr[data-j]').forEach(r => { const go = () => { S.j = S.j === r.dataset.j ? null : r.dataset.j; writeHash(); jobDetail(S.j);
+      if (S.j) document.getElementById('jdetail').scrollIntoView({behavior: 'smooth', block: 'nearest'}); };
+    r.onclick = go; r.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } }; });
+  if (S.j) jobDetail(S.j);
+}
+function rerender(id, fn, after) { const el = document.getElementById(id); if (!el) return; el.outerHTML = fn(); const n = document.getElementById(id); if (n) n.classList.add('fx'); after(); }
+
+// Motion with a purpose (F3 §16): numbers count up when the page loads, jobs newer than the last
+// visit fade in, a redrawn block fades in, the "hace N s" text ticks. The freshness pulse is the
+// only loop. prefers-reduced-motion turns all of it off.
+const CALM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let SEEN = 0, tick = null;
+try { SEEN = +sessionStorage.getItem('visor-seen') || 0; } catch (e) {}
+function countUp() {
+  if (CALM) return;
+  document.querySelectorAll('.g-kpi .kpi .v, .usd.xl, .usd.l').forEach(el => {
+    const w = [...el.childNodes].find(x => x.nodeType === 3 && /\d/.test(x.textContent)); if (!w) return;
+    const txt = w.textContent, m = txt.match(/\d[\d,]*(\.\d+)?/), end = parseFloat(m[0].replace(/,/g, '')), dec = (m[1] || '.').length - 1, t0 = performance.now();
+    const f = (v) => dec ? v.toFixed(dec) : m[0].includes(',') ? Math.round(v).toLocaleString('es-PE') : String(Math.round(v));
+    const step = (t) => { const k = Math.min(1, (t - t0) / 700); w.textContent = txt.replace(m[0], f(end * (1 - Math.pow(1 - k, 3)))); if (k < 1) requestAnimationFrame(step); };
+    requestAnimationFrame(step); });
+}
+
+function render() {
+  now = Date.now()/1000;
+  NODES = Object.keys(D.nodes || {});
+  readHash();
+  const age = now - D.built;
+  const fresh = () => document.getElementById('fresh').textContent = `hace ${ago(Date.now()/1000 - D.built)}${D.redacted ? ' · copia web' : ''}`;
+  fresh(); clearInterval(tick); tick = setInterval(fresh, 1000);
+  document.getElementById('pulse').className = 'pulse' + (age > 900 ? ' old' : '');
+  document.getElementById('app').innerHTML = sprite() + live() + consumption() + projects() + models() + hist() + foot();
+  bind();
+  if (S.p) detail(S.p);
+  renderNow();
+  if (!render.done) { render.done = true; countUp(); }
+  try { sessionStorage.setItem('visor-seen', String(Math.max(SEEN, ...(D.jobs || []).map(j => j.t0 || 0)))); } catch (e) {}
+  const P = problems(), chip = document.getElementById('alertchip');
+  const crit = P.filter(p => p.lvl === 'crit').length;
+  chip.hidden = false;
+  chip.className = 'alertchip ' + (crit ? 'crit' : P.length ? 'warn' : 'ok');
+  chip.textContent = P.length ? `⚠ ${P.length} alerta${P.length > 1 ? 's' : ''}` : '✓ en verde';
+}
+
+// One delegated tooltip: charts and timeline ([data-tip="<chart>:<i>"]) and tech chips
+// ([data-tt] name + [data-tw] what it is, the Landing's chip tooltip). Hover, focus and tap.
+let showTip = () => {};
+(function tooltips() {
+  const tip = document.getElementById('tip');
+  let on = null;
+  const sel = '[data-tip],[data-tt]';
+  const show = (el) => { let html;
+    if (el.dataset.tt) html = `<b>${esc(el.dataset.tt)}</b>${el.dataset.tw ? `<span class="w">${esc(el.dataset.tw)}</span>` : ''}`;
+    else { const [k, i] = el.dataset.tip.split(':'); html = (TIPS[k] || [])[+i]; }
+    if (!html) return;
+    if (on) on.classList.remove('on'); on = el; el.classList.add('on');
+    tip.innerHTML = html; tip.style.display = 'block'; const r = el.getBoundingClientRect();
+    tip.style.left = Math.max(8, Math.min(r.left + r.width / 2 - tip.offsetWidth / 2, innerWidth - tip.offsetWidth - 8)) + 'px';
+    const above = r.top - tip.offsetHeight - 8;
+    tip.style.top = (above >= 8 ? above : r.bottom + 8) + 'px'; };
+  showTip = show;
+  const hide = () => { tip.style.display = 'none'; if (on) on.classList.remove('on'); on = null; };
+  document.addEventListener('mouseover', e => { const el = e.target.closest && e.target.closest(sel); el ? show(el) : hide(); });
+  document.addEventListener('focusin', e => { const el = e.target.closest && e.target.closest(sel); if (el) show(el); });
+  document.addEventListener('focusout', hide);
+  document.addEventListener('click', e => { const el = e.target.closest && e.target.closest(sel); el ? show(el) : hide(); });
+  addEventListener('scroll', hide, {passive: true});
+})();
+
+(function theme() {
+  const root = document.documentElement, btn = document.getElementById('theme');
+  try { const t = localStorage.getItem('visor-theme'); if (t === 'light' || t === 'dark') root.dataset.theme = t; } catch (e) {}
+  btn.onclick = () => { root.dataset.theme = root.dataset.theme === 'light' ? 'dark' : 'light';
+    try { localStorage.setItem('visor-theme', root.dataset.theme); } catch (e) {} };
+})();
+
+// Local file:// copy: build.py writes visor-stamp.js (window.VISOR_STAMP = built) next to this page
+// on every build. Every 30 s a fresh <script> reads it; the page reloads only when the stamp is
+// newer than the data it carries. A file:// page cannot fetch() its neighbour (Chromium blocks it),
+// but it can load it as a script. If even that fails, the "recargar" button stays visible.
+const STAMP_EVERY = 30000;
+function watchStamp() {
+  const btn = document.getElementById('reload'), lv = document.getElementById('live');
+  btn.onclick = () => location.reload();
+  let on = true; try { on = localStorage.getItem('visor-live') !== '0'; } catch (e) {}
+  const paint = () => { lv.hidden = false; lv.classList.toggle('on', on); lv.setAttribute('aria-pressed', on); lv.textContent = on ? '● en vivo' : 'en vivo'; };
+  lv.onclick = () => { on = !on; try { localStorage.setItem('visor-live', on ? '1' : '0'); } catch (e) {} paint(); if (on) tick(); };
+  paint();
+  const tick = () => {
+    if (!on) return;
+    const old = document.getElementById('stamp'); if (old) old.remove();
+    const s = document.createElement('script');
+    s.id = 'stamp'; s.src = 'visor-stamp.js?t=' + Date.now();
+    s.onload = () => {
+      const t = window.VISOR_STAMP;
+      if (typeof t === 'number' && t > D.built + 1) { if (on) location.reload(); }
+      else { btn.hidden = true; setTimeout(tick, STAMP_EVERY); }
+    };
+    s.onerror = () => { btn.hidden = false; setTimeout(tick, STAMP_EVERY); };
+    document.head.appendChild(s);
+  };
+  setTimeout(tick, STAMP_EVERY);
+}
+
+// ---------------------------------------------------------------- live (prompts 18-19)
+// `enjambre live --serve` rewrites live.js (window.LIVE) every 10 s and ring.js (each node's last
+// hours of numbers). The page loads them as scripts every 5 s (file:// cannot fetch a neighbour).
+// Only the "now" parts repaint: the strip, Corriendo, node chips and the node detail.
+let LIVE = null, RING = null, RING_DONE = true;
+const LIVE_EVERY = 5000, SLEEPY_S = 90;
+const liveAge = () => LIVE && LIVE.updated_ts ? Date.now() / 1000 - LIVE.updated_ts : null;
+const pctd = (v) => v == null ? 'n/d' : Math.round(v) + ' %';
+const gb = (v) => v == null ? 'n/d' : (+v).toFixed(1) + ' GB';
+function loadScript(id, src, cb) {
+  const old = document.getElementById(id); if (old) old.remove();
+  const s = document.createElement('script');
+  s.id = id; s.src = src + '?t=' + Date.now();
+  s.onload = () => cb(true); s.onerror = () => cb(false);
+  document.head.appendChild(s);
+}
+function watchLive() {
+  const tick = () => loadScript('livejs', 'live.js', (ok) => {
+    const fresh = ok && window.LIVE && (!LIVE || window.LIVE.updated_ts !== LIVE.updated_ts);
+    if (!D.demo) loadScript('ctljs', 'ctl.js', (ok2) => { CTL = ok2 && window.LIVE_CTL ? window.LIVE_CTL : null; });   // the demo has no controls: no 404 every tick
+    if (fresh) { LIVE = window.LIVE; renderNow(); } else paintClock();
+    if (S.tn) loadRing();
+    setTimeout(tick, LIVE_EVERY);
+  });
+  tick();
+  setInterval(paintClock, 1000);
+}
+function loadRing() {
+  if (D.demo && RING) return drawDetail();       // static demo: ring.js never changes (≈800 KB), load it once
+  if (document.getElementById('ringjs') && !RING_DONE) return;   // still loading: a 5 s tick must not abort it
+  RING_DONE = false;
+  loadScript('ringjs', 'ring.js', (ok) => { RING_DONE = true; if (ok && window.LIVE_RING) RING = window.LIVE_RING; drawDetail(); });
+}
+function paintClock() {
+  if (D.demo && document.getElementById('demo').hidden) { document.getElementById('demo').hidden = false; console.info('%cenjambre · modo demo', 'color:#2dd4bf;font-weight:700', '— ningún nodo fue molestado para dibujar esta página.'); }
+  if (D.redacted) return;                       // the web copy has no live.js: never "asleep" there
+  const a = liveAge(), sl = document.getElementById('sleepy');
+  sl.hidden = !(a == null || a > SLEEPY_S);
+  sl.textContent = a == null ? 'visor dormido · sin live.js' : `visor dormido · hace ${ago(a)}`;
+  const ev = document.getElementById('nowev');
+  if (ev && LIVE && LIVE.ahora.ultimo_evento_ts) ev.textContent = `último evento hace ${ago(Date.now() / 1000 - LIVE.ahora.ultimo_evento_ts)}`;
+}
+const ST_COL = {paused_by_priority: 'var(--n3)', paused: 'var(--n3)', evicted_resumable: 'var(--n3)', waiting_window: 'var(--n3)', waiting_resources: 'var(--muted)', nosignal: 'var(--warn)', running: 'var(--good)', launching: 'var(--n5)', stalled: 'var(--warn)', queued: 'var(--muted)', waiting: 'var(--muted)', idle: 'var(--muted)', ok: 'var(--good)', failed: 'var(--crit)', incomplete: 'var(--warn)', killed: 'var(--crit)'};
+const ST_TXT = {paused_by_priority: 'pausado por prioridad', paused: 'pausado a mano', evicted_resumable: 'desalojado (reanudable)', waiting_window: 'esperando ventana', waiting_resources: 'esperando recursos', nosignal: 'sin señal del nodo', running: 'corriendo', launching: 'despachando', stalled: 'sin latido', queued: 'en cola', waiting: 'en espera', idle: 'inactiva', ok: 'terminó ok', failed: 'falló', incomplete: 'incompleto', killed: 'detenido'};
+const sessName = (sid) => { const s = ((LIVE || {}).sesiones || []).find(x => x.session_id === sid); return s ? s.id : sid ? String(sid).slice(0, 8) : null; };
+// 21 §5: the live HANDOFF age (the statusline only shows its time): amber 60 min, red 3 h
+const hoAge = (x) => { if (!x.handoff_ts) return ''; const a = Date.now() / 1000 - x.handoff_ts; return `<span class="ho" style="color:var(--${a >= 10800 ? 'crit' : a >= 3600 ? 'warn' : 'muted'})">HANDOFF hace ${ago(a)}</span>`; };
+function runCard(x) {
+  const col = ST_COL[x.estado] || 'var(--muted)', since = x.last_activity ? ago(Date.now() / 1000 - x.last_activity) : '—';
+  const job = x.tipo === 'trabajo';
+  const bits = [];
+  if (job) {
+    if (x.turno != null) bits.push(`turno <b>${x.turno}</b>${x.max_turnos ? ' / ' + x.max_turnos : ''}`);
+    if (x.pct != null) bits.push(`<b>${(+x.pct).toFixed(1)} %</b>`);
+    if (x.usd != null) bits.push(`${money(x.usd)}${x.tope_usd ? ' / ' + usd(x.tope_usd) : ''} est.`);
+    if (x.elapsed_s != null) bits.push(`${ago(x.elapsed_s)} corriendo`);
+  } else if (x.tipo === 'externo') {
+    if (x.elapsed_s != null) bits.push(`${ago(x.elapsed_s)} de render${x.pct != null ? `, <b>${Math.round(x.pct)} %</b>` : ''}${x.frames_total ? ` (${x.frames}/${x.frames_total} cuadros${x.eta_s != null ? ', faltan ~' + ago(x.eta_s) : ''})` : ''}`);
+  } else {
+    if (x.ctx_k != null && x.ctx_k >= 0) bits.push(`contexto ${x.ctx_k} k`);
+    if (x.usd != null && x.usd >= 0) bits.push(`${money(x.usd)} equiv.`);
+    if (x.handoff_ts) bits.push(hoAge(x));
+    if ((x.despachos || []).length) bits.push(`pidió ${x.despachos.length} trabajo(s): ${x.despachos.map(esc).join(', ')}`);
+  }
+  const prog = job && x.max_turnos && x.turno != null ? Math.min(100, 100 * x.turno / x.max_turnos) : x.tipo !== 'sesion' && x.pct != null ? x.pct : null;
+  return `<div class="card rcard${runCard.fx ? ' fx' : ''}" style="--rc:${col}">
+    <div class="rh"><span class="rst">${x.estado === 'paused_by_priority' && /a mano/.test(x.motivo || '') ? 'pausado a mano' : ST_TXT[x.estado] || esc(x.estado)}</span>${x.prioridad ? `<span class="prio ${esc(x.prioridad)}" title="prioridad">${esc(x.prioridad)}</span>` : ''}<b>${esc(x.id)}</b>${dev(x.nodo)}<span class="muted" style="font-size:12px">${job ? 'trabajo' : x.tipo === 'externo' ? 'externo' : 'sesión'} · ${esc(x.proyecto || '—')}${x.preset ? ' · ' + esc(x.preset) : ''}</span></div>
+    ${x.motivo ? `<div class="motivo">${esc(x.motivo)}${x.motivo_desde ? ` <span class="muted">· desde ${dtm(typeof x.motivo_desde === 'number' ? x.motivo_desde : isoTs(x.motivo_desde)).slice(11)}</span>` : ''}</div>` : ''}
+    <div class="rm">${bits.join(' · ') || '&nbsp;'}</div>
+    ${prog != null ? `<div class="bar" role="img" aria-label="${Math.round(prog)} %"><i style="--w:${prog}%"></i></div>` : ''}
+    ${x.ultima_linea ? `<div class="rl" title="${esc(x.ultima_linea)}">› ${esc(x.ultima_linea)}</div>` : ''}
+    <div class="rm">última señal hace ${since}${x.senal ? ` <span class="muted">(${esc(x.senal)})</span>` : ''}${job && x.pedido_por ? ` · pedido por <b>${esc(sessName(x.pedido_por))}</b>` : ''}${x.estado === 'stalled' ? ' · <span style="color:var(--warn)">el latido lleva más de 5 min parado</span>' : ''}</div>
+    ${ctlRow(x)}</div>`;
+}
+// Prompt 20: pause / resume / evict / priority, ONLY in the local copy and only while live serves
+// its 127.0.0.1 endpoint (port + token in ctl.js, which the web copy never has). If the browser
+// refuses the request, the card shows the exact command to paste instead.
+let CTL = null;
+function ctlKey(x) { return x.tipo === 'externo' ? x.id : 'job:' + x.id; }
+function ctlCmd(act, key, prio) {
+  const id = key.startsWith('job:') ? key.slice(4) : key;
+  return {pause: `enjambre pausar ${id}`, resume: `enjambre reanudar ${id}`, evict: `enjambre desalojar ${id}`,
+          priority: `enjambre prioridad ${id} ${prio || ''}`, adopt: `enjambre adoptar ${key.split(':')[1]} ${key.split(':')[2]}`}[act];
+}
+function ctlRow(x) {
+  if (D.redacted || D.demo || (x.tipo !== 'trabajo' && x.tipo !== 'externo')) return '';
+  const st = x.estado, key = ctlKey(x), g = (((LIVE || {}).planificador || {}).gestionados || []).find(j => j.key === key) || {};
+  const can = [];
+  if (['running', 'launching'].includes(st)) can.push(['pause', 'pausar']);
+  if (['paused_by_priority', 'paused', 'evicted_resumable'].includes(st)) can.push(['resume', 'reanudar']);
+  if (st === 'running' && g.resumable && x.tipo === 'trabajo') can.push(['evict', 'desalojar']);
+  if (!can.length && !['queued', 'waiting_window', 'waiting_resources'].includes(st)) return '';
+  const sel = `<select data-ctlprio="${esc(key)}" aria-label="prioridad de ${esc(x.id)}">${['alta', 'normal', 'baja', 'nocturna'].map(p => `<option${p === x.prioridad ? ' selected' : ''}>${p}</option>`).join('')}</select>`;
+  return `<div class="ctl" data-ctlbox="${esc(key)}">${can.map(([a, t]) => `<button class="btn" type="button" data-ctl="${a}" data-key="${esc(key)}">${t}</button>`).join('')}${sel}<span class="muted ctlmsg" style="font-size:12px"></span></div>`;
+}
+async function ctlSend(act, key, prio, box, extra) {
+  const msg = box && box.querySelector('.ctlmsg'), cmd = ctlCmd(act, key, prio);
+  const say = (h) => { if (msg) msg.innerHTML = h; };
+  if (!CTL) return say(`live no ofrece controles ahora: <span class="ctlcmd">${esc(cmd)}</span>`);
+  say('…');
+  try {
+    const r = await fetch(`http://127.0.0.1:${CTL.port}/ctl`, {method: 'POST', headers: {'Content-Type': 'text/plain'},
+      body: JSON.stringify(Object.assign({token: CTL.token, action: act, key, priority: prio || null}, extra || {}))});
+    const j = await r.json();
+    say(j.ok ? `✓ ${esc(j.msg || 'hecho')}` : `<span style="color:var(--crit)">✗ ${esc(j.error || j.msg || r.status)}</span>`);
+  } catch (e) {
+    say(`el navegador bloqueó la llamada; pega esto: <span class="ctlcmd">${esc(cmd)}</span>`);
+  }
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-ctl]'); if (!b) return;
+  ctlSend(b.dataset.ctl, b.dataset.key, b.dataset.prio || null, b.closest('[data-ctlbox]'), b.dataset.name ? {name: b.dataset.name} : null);
+});
+document.addEventListener('change', e => {
+  const s = e.target.closest && e.target.closest('[data-ctlprio]'); if (!s) return;
+  ctlSend('priority', s.dataset.ctlprio, s.value, s.closest('[data-ctlbox]'));
+});
+function unmanagedBox() {
+  const u = (((LIVE || {}).planificador || {}).no_gestionados) || [];
+  if (!u.length) return '';
+  return `<h3 style="margin:4px 0 8px">No gestionados · ${u.length}</h3>
+    <div class="card" style="margin-bottom:12px"><div class="note">Procesos que enjambre no lanzó y que llevan ≥ 2 min pesando (CPU &gt; 50 % o RAM &gt; 2 GB). No se tocan solos: «adoptar» los pone bajo el planificador como <b>baja</b> (se pausan cuando llega un alta).</div>
+    ${u.map(p => { const key = `pid:${p.node}:${p.pid}`; return `<div class="row" data-ctlbox="${esc(key)}"><span>${dev(p.node, false)} <b>${esc(p.name || '?')}</b> <span class="muted mono">pid ${p.pid}</span></span><span>CPU ${Math.round(p.cpu || 0)} % · ${(p.rss_gb || 0).toFixed(1)} GB · hace ${ago(p.desde_s)} ${D.redacted ? '' : `<button class="btn" type="button" style="padding:1px 9px" data-ctl="adopt" data-prio="baja" data-name="${esc(p.name || '')}" data-key="${esc(key)}">adoptar</button><span class="muted ctlmsg" style="font-size:12px"></span>`}</span></div>`; }).join('')}</div>`;
+}
+function renderNow() {
+  const bar = document.getElementById('nowbar'), box = document.getElementById('corriendo');
+  if (!bar || !box || D.redacted) return;
+  // A repaint every 10 s must not replay animations, close what the owner opened or drop focus.
+  const first = !box.dataset.painted, idleOpen = !!(box.querySelector('details') || {}).open;
+  const fa = document.activeElement, focusKey = fa && fa.dataset ? ['tdet', 'tsel', 'twin', 'tclose'].map(k => fa.dataset[k] != null ? `[data-${k}="${fa.dataset[k]}"]` : '').join('') : '';
+  if (!LIVE) { bar.hidden = true; box.innerHTML = ''; paintClock(); return; }
+  if (fa && fa.dataset && fa.dataset.ctlprio != null && box.contains(fa)) { paintClock(); return; }   // the owner is choosing
+  const msgs = {}; box.querySelectorAll('[data-ctlbox] .ctlmsg').forEach(m => { if (m.innerHTML) msgs[m.closest('[data-ctlbox]').dataset.ctlbox] = m.innerHTML; });
+  const A = LIVE.ahora, per = Object.entries(A.por_nodo || {}).map(([n, k]) => `${esc(lab(n))} ${k}`).join(' · ');
+  bar.hidden = false; bar.className = 'nowbar' + (A.running ? ' run' : '');
+  bar.innerHTML = `<span class="ndot"></span><b>${A.running} corriendo</b>${per ? ` (${per}${A.externos ? `, ${A.externos} externo${A.externos > 1 ? 's' : ''}` : ''})` : ''} · <b>${A.queued}</b> en cola${A.stalled ? ` · <span style="color:var(--warn)">${A.stalled} sin latido</span>` : ''} · <span id="nowev">—</span>`;
+  const all = [...(LIVE.trabajos || []), ...(((LIVE.planificador || {}).externos) || []), ...(LIVE.sesiones || [])];
+  // swarm jobs first (what was dispatched is what the owner looks for), then sessions; newest first in each
+  const running = all.filter(x => ['running', 'launching', 'stalled', 'nosignal', 'paused_by_priority', 'paused', 'evicted_resumable'].includes(x.estado)).sort((a, b) => (a.tipo === 'trabajo' ? 0 : 1) - (b.tipo === 'trabajo' ? 0 : 1) || (b.last_activity || 0) - (a.last_activity || 0));
+  const queued = all.filter(x => ['queued', 'waiting_window', 'waiting_resources'].includes(x.estado));
+  const done = (LIVE.trabajos || []).filter(x => ['ok', 'failed', 'incomplete', 'killed'].includes(x.estado));
+  const waiting = (LIVE.sesiones || []).filter(x => x.estado === 'waiting'), idle = (LIVE.sesiones || []).filter(x => x.estado === 'idle');
+  runCard.fx = first && !CALM;
+  const chip = (x) => `<span class="chip" title="${esc(x.proyecto || '')} · última señal hace ${x.last_activity ? ago(Date.now() / 1000 - x.last_activity) : '—'}">${dev(x.nodo, false)}${esc(x.id)} ${hoAge(x)}</span>`;
+  box.innerHTML = `<h3 style="margin:4px 0 8px">Corriendo · ${running.length}</h3>
+    ${running.length ? `<div class="rgrid">${running.map(runCard).join('')}</div>` : '<div class="card empty" style="margin-bottom:12px">Nada corriendo ahora mismo.</div>'}
+    ${queued.length ? `<h3 style="margin:4px 0 8px">En cola · ${queued.length}</h3><div class="rgrid">${queued.map(runCard).join('')}</div>` : ''}
+    ${unmanagedBox()}
+    ${done.length ? `<h3 style="margin:4px 0 8px">Terminados hace poco</h3><div class="rgrid">${done.map(runCard).join('')}</div>` : ''}
+    ${waiting.length ? `<h3 style="margin:4px 0 8px">En espera · ${waiting.length}</h3><div class="wlist">${waiting.map(chip).join('')}</div>` : ''}
+    ${idle.length ? `<details style="margin-bottom:12px"${idleOpen ? ' open' : ''}><summary class="muted" style="cursor:pointer;font-size:13px">${idle.length} en espera larga (sin actividad &gt; 30 min)</summary><div class="wlist">${idle.map(chip).join('')}</div></details>` : ''}`;
+  const snap = document.getElementById('sesiones-snap'); if (snap) snap.hidden = true;   // live lists them, ordered
+  document.querySelectorAll('.tchips[data-tn]').forEach(el => el.innerHTML = teleChips(el.dataset.tn));
+  box.querySelectorAll('[data-ctlbox]').forEach(b => { const m = msgs[b.dataset.ctlbox], el = b.querySelector('.ctlmsg'); if (m && el) el.innerHTML = m; });
+  box.dataset.painted = '1';
+  paintClock();
+  drawDetail();
+  if (focusKey) { const el = document.querySelector(focusKey); if (el) el.focus({preventScroll: true}); }
+  const sr = document.getElementById('nowsr'), said = `${A.running} corriendo, ${A.queued} en cola`;
+  if (sr && sr.textContent !== said) sr.textContent = said;   // announced only when the counts change
+}
+const TEL = (n) => ((LIVE || {}).telemetria || {})[n] || null;
+// 22 §1: "ahora" is the reading's own time (telemetria.at), amber > 60 s, red > 3 min (live.py TELE_*)
+const teleAgo = (n) => { const t = TEL(n), at = t && isoTs(t.at); if (at == null) return null; const a = Math.max(0, Date.now() / 1000 - at), u = (LIVE || {}).tele_umbrales || [60, 180]; return {a, lvl: a > u[1] ? 'crit' : a > u[0] ? 'warn' : 'muted'}; };
+const nowTxt = (n) => { const g = teleAgo(n); return g ? `<div class="gs tage" style="color:var(--${g.lvl})">${g.lvl === 'crit' ? 'lectura vieja' : 'ahora'} · hace ${ago(g.a)}</div>` : ''; };
+const ifTxt = (io) => io.iface.length <= 8 ? `${io.iface}${io.iface_kind && io.iface_kind !== io.iface ? ` (${io.iface_kind})` : ''}` : io.iface_kind || io.iface;
+const stepS = (rows) => { const ts = rows.map(r => isoTs(r.at)), d = ts.slice(1).map((t, i) => t - ts[i]).filter(x => x > 0).sort((a, b) => a - b); return d.length ? Math.round(d[d.length >> 1]) : null; };
+function presLvl(m) {
+  if (!m) return null;
+  if (m.pressure) return {normal: 'ok', warn: 'warn', critical: 'crit'}[m.pressure] || null;
+  return m.load_pct == null ? null : m.load_pct >= 92 ? 'crit' : m.load_pct >= 80 ? 'warn' : 'ok';
+}
+function teleChips(n) {
+  const nd = ((LIVE || {}).nodos || {})[n] || {}, ta = teleAgo(n);
+  const silent = (nd.via ? `<span class="tchip warn" title="${esc(deid(nd.via_reason))}">vía ${esc(nd.via)} ¿VPN?</span>` : '')
+    + (nd.stale_s != null ? `<span class="tchip crit" title="${esc(deid(nd.error || ''))}">sin respuesta hace ${ago(nd.stale_s)}</span>` : '');
+  const t = TEL(n); if (!t) return silent || `<span class="tchip">telemetría n/d</span>`;
+  const m = t.mem || {}, lv = presLvl(m), th = t.thermal || {};
+  const memTxt = m.pressure ? `presión: ${m.pressure === 'normal' ? 'normal' : m.pressure === 'warn' ? 'ámbar' : 'roja'}` : `RAM ${pctd(m.load_pct)}`;
+  return `${silent}<span class="tchip ${ta && ta.lvl !== 'muted' ? ta.lvl : ''}" title="CPU, GPU, RAM, red y procesos: la lectura rápida de cada ciclo">telemetría hace ${ta ? ago(ta.a) : '—'}</span><span class="tchip">CPU ${pctd((t.cpu || {}).pct)}</span><span class="tchip">GPU ${pctd((t.gpu || {}).pct)}</span>${(t.io || {}).iface ? `<span class="tchip" title="la interfaz por la que entraron más bytes desde la lectura anterior">entra por ${esc(ifTxt(t.io))}</span>` : ''}
+    <span class="tchip ${lv === 'ok' ? '' : lv || ''}">${memTxt}</span>${th.throttled ? '<span class="tchip warn">estrangulando</span>' : ''}
+    <button class="btn" type="button" data-tdet="${esc(n)}" style="padding:1px 9px">Detalle</button>${polLine(n)}`;
+}
+function polLine(n) {
+  const p = (((LIVE || {}).planificador || {}).politica || {})[n];
+  return p ? `<div class="pol" style="flex-basis:100%">Planificador: ${esc(p)}</div>` : '';
+}
+function arc(v, col) {   // half-ring gauge, 0-100
+  const a = Math.PI * Math.min(100, Math.max(0, v || 0)) / 100, r = 40, cx = 48, cy = 50;
+  const x = cx - r * Math.cos(a), y = cy - r * Math.sin(a);
+  return `<svg viewBox="0 0 96 58" aria-hidden="true"><path d="M8 50 A40 40 0 0 1 88 50" fill="none" stroke="var(--surface-2)" stroke-width="9" stroke-linecap="round"/>
+    ${v == null ? '' : `<path d="M8 50 A40 40 0 0 1 ${x.toFixed(1)} ${y.toFixed(1)}" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round"/>`}</svg>`;
+}
+const lvlCol = (v, a, r) => v == null ? 'var(--muted)' : v >= r ? 'var(--crit)' : v >= a ? 'var(--warn)' : 'var(--good)';
+function gauge(label, v, sub, col, age) {
+  return `<div class="card gauge">${arc(v, col || lvlCol(v, 80, 95))}<div class="gv">${v == null ? 'n/d' : Math.round(v) + ' %'}</div><div class="gl">${label}</div><div class="gs">${sub || '&nbsp;'}</div>${age || ''}</div>`;
+}
+const WINS = {'15': 900, '60': 3600, '240': 14400};
+function spark(rows, key, label, unit, max, col, win) {
+  const vals = rows.map(r => r[key]);
+  const known = vals.filter(v => v != null);
+  if (!known.length) return `<div class="card spark"><div class="sh"><span>${label}</span><b>n/d</b></div><div class="muted" style="font-size:12px;padding:20px 0">sin datos en esta ventana</div></div>`;
+  const top = max || Math.max(1, ...known) * 1.15, W = 300, H = 64, n = Math.max(2, rows.length);
+  let d = '', pen = false;
+  vals.forEach((v, i) => { if (v == null) { pen = false; return; }
+    const x = (i / (n - 1) * W).toFixed(1), y = (H - 2 - (H - 4) * Math.min(1, v / top)).toFixed(1);
+    d += (pen ? 'L' : 'M') + x + ' ' + y + ' '; pen = true; });
+  const last = known[known.length - 1], peak = Math.max(...known);
+  return `<div class="card spark"><div class="sh"><span>${label}</span><span>ahora <b>${(+last).toFixed(unit === '%' ? 0 : 1)} ${unit}</b> · máx ${(+peak).toFixed(unit === '%' ? 0 : 1)}</span></div>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${label}: ahora ${last} ${unit}"><path d="${d}" fill="none" stroke="${col}" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg><div class="gs swin">${win || ''}</div></div>`;
+}
+function reposoBlock(n) {
+  // prompt 19 §2.4: the rules are shown with their numbers (thresholds.json), not as a bare light
+  const all = LIVE.reposo, u = LIVE.reposo_umbrales;
+  if (all === undefined) return '';
+  const rp = all ? all[n] : null;
+  const head = '<h3 style="margin:14px 0 6px">Reposo</h3>';
+  if (!u || rp == null) return head + '<div class="empty">⚠ umbrales: no se pudo leer <code>thresholds.json</code>; sin veredicto de reposo.</div>';
+  const m = s => Math.round(s / 60);
+  const rules = `<ul class="note" style="margin:6px 0 0 18px;padding:0">
+    <li>presión de memoria ≠ normal durante ≥ ${m(u['visor-reposo-pressure-s'])} min → «sin memoria»: no se despacha más aquí (<code>run</code> encola o va a otro nodo; <code>watch</code> retiene la cola)</li>
+    <li>límite de velocidad de CPU &lt; 100 % durante ≥ ${m(u['visor-reposo-thermal-s'])} min → «estrangulando térmicamente» (aviso)</li>
+    <li>swap creciendo ≥ ${u['visor-reposo-swap-gb']} GB en ${m(u['visor-reposo-swap-window-s'])} min → «paginando» (aviso)</li></ul>
+    <div class="note">Números editables en <code>~/.claude/rules/thresholds.json</code> (<code>visor-reposo-*</code>).</div>`;
+  const fired = rp.length ? rp.map(r => `<div class="card" style="margin:6px 0;padding:8px 10px;border-left:4px solid ${r.no_dispatch ? 'var(--crit)' : 'var(--warn)'}"><b>${esc(r.msg)}</b><div class="note">desde hace ${ago(r.held_s)}${r.no_dispatch ? ' · no se despacha aquí' : ' · solo aviso'}</div></div>`).join('')
+    : `<div class="note" style="color:var(--good)">Ninguna regla de reposo activa en ${esc(lab(n))}.</div>`;
+  return head + fired + rules;
+}
+
+function drawDetail() {
+  const box = document.getElementById('teledet'); if (!box) return;
+  const n = S.tn; if (!n || !LIVE) { box.innerHTML = ''; return; }
+  const t = TEL(n), cfg = (LIVE.nodos || {})[n] || {}, m = (t || {}).mem || {}, c = (t || {}).cpu || {}, g = (t || {}).gpu || {}, th = (t || {}).thermal || {}, io = (t || {}).io || {};
+  const tw = S.tw && WINS[S.tw] ? S.tw : '60', since = Date.now() / 1000 - WINS[tw];
+  const rows = ((RING || {})[n] || []).filter(r => (Date.parse(r.at) / 1000) >= since);
+  const memPct = m.total_gb && m.used_gb != null ? 100 * m.used_gb / m.total_gb : m.load_pct;
+  const thTxt = th.cpu_speed_limit != null ? (th.cpu_speed_limit < 100 ? `estrangulando: ${th.cpu_speed_limit} %` : 'sin límite') : th.throttled === false ? 'sin aviso térmico' : 'n/d';
+  const nt = nowTxt(n), st = stepS(rows), tAgo = t && isoTs(t.at) != null ? ago(Date.now() / 1000 - isoTs(t.at)) : '—';
+  const win = `últimos ${tw === '240' ? '4 h' : tw === '60' ? '1 h' : '15 min'}${st ? ` · 1 punto / ${ago(st)}` : ''}`;
+  const procs = ((t || {}).top || []).slice().sort((a, b) => (b.tag ? 1 : 0) - (a.tag ? 1 : 0) || b.cpu - a.cpu);
+  box.innerHTML = `<div class="card" style="margin-top:12px"><div class="nsel"><h3 style="margin:0 8px 0 0">Detalle</h3>
+      ${NODES.map(x => `<button class="btn ${x === n ? 'on' : ''}" type="button" data-tsel="${esc(x)}">${dev(x)}</button>`).join('')}
+      <span class="muted" style="margin-left:auto;font-size:12px">los gauges siempre son ahora; el selector solo cambia las curvas</span><span class="seg">${Object.keys(WINS).map(w => `<button class="btn ${w === tw ? 'on' : ''}" type="button" data-twin="${w}">${w === '240' ? '4 h' : w === '60' ? '1 h' : '15 min'}</button>`).join('')}
+      <button class="btn" type="button" data-tclose="1" aria-label="Cerrar detalle">✕</button></span></div>
+    ${!t ? `<div class="empty">Sin telemetría de ${esc(lab(n))}${cfg.error ? ` (${esc(deid(cfg.error))})` : ''}.</div>` : `
+    <div class="gauges">
+      ${gauge('CPU', c.pct, `${c.cores || '?'} núcleos${c.p_cores_n ? ` (${c.p_cores_n}P+${c.e_cores_n}E)` : ''}${c.load1 != null ? ' · carga ' + c.load1 : ''}`, null, nt)}
+      ${gauge('GPU', g.pct, g.source === 'n/d' ? 'sin lectura fiable' : `${g.vram_used_gb != null ? gb(g.vram_used_gb) + ' VRAM · ' : ''}${g.temp_c != null ? g.temp_c + ' °C · ' : ''}${esc(g.source || '')}`, null, nt)}
+      ${gauge('RAM', memPct, `${gb(m.used_gb)} de ${gb(m.total_gb)}${m.compressed_gb != null ? ' · compr. ' + gb(m.compressed_gb) : ''}${m.swap_used_gb != null ? ' · swap ' + gb(m.swap_used_gb) : ''}${m.pressure ? ' · presión ' + m.pressure : ''}`, {ok: 'var(--good)', warn: 'var(--warn)', crit: 'var(--crit)'}[presLvl(m)], nt)}
+      <div class="card gauge"><div class="gv" style="margin-top:14px;color:${th.throttled ? 'var(--warn)' : th.throttled === false ? 'var(--good)' : 'var(--muted)'}">${esc(thTxt)}</div><div class="gl">Térmico</div><div class="gs">${th.temp_c != null ? th.temp_c + ' °C' : osOf(n) === 'darwin' ? 'temperatura en grados: n/d (sin sudo)' : 'temperatura en grados: n/d (Windows no la expone en esta placa)'}</div>${nt}</div>
+      <div class="card gauge"><div class="gv" style="margin-top:14px">${io.net_in_mb_s == null ? 'n/d' : `↓${io.net_in_mb_s} ↑${io.net_out_mb_s}`}</div><div class="gl">Red (MB/s)</div><div class="gs">${io.iface ? 'entra por ' + esc(ifTxt(io)) + ' · ' : ''}disco I/O: ${io.disk_mb_s == null ? 'n/d' : io.disk_mb_s + ' MB/s'}</div>${nt}</div>
+    </div>
+    <div class="sparks">
+      ${spark(rows, 'cpu', 'CPU', '%', 100, 'var(--accent)', win)}
+      ${spark(rows, 'gpu', 'GPU', '%', 100, 'var(--n3)', win)}
+      ${spark(rows, 'mem', 'RAM usada', 'GB', m.total_gb || null, 'var(--n2)', win)}
+      ${spark(rows, 'net_in', 'Red entrada', 'MB/s', null, 'var(--n5)', win)}
+    </div>
+    <h3 style="margin:14px 0 6px">Procesos · top ${procs.length} <span class="muted" style="font-size:12px;font-weight:400">· muestra de hace ${tAgo}</span></h3>
+    <div class="scroll"><table><thead><tr><th>Proceso</th><th>PID</th><th>CPU</th><th>Memoria</th><th>Del enjambre</th></tr></thead><tbody>
+      ${procs.map(r => `<tr><td class="mono">${esc(r.name)}</td><td class="mono">${r.pid}</td><td class="mono">${(+r.cpu).toFixed(0)} %</td><td class="mono">${gb(r.rss_gb)}</td><td>${r.tag ? `<span class="ptag">${esc(r.tag)}</span>` : ''}</td></tr>`).join('')}</tbody></table></div>
+    ${reposoBlock(n)}
+    <div class="note">CPU de proceso en % de un núcleo (400 % = 4 núcleos llenos). ${osOf(n) === 'darwin' ? 'En macOS es la media móvil de <code>ps</code> (~1 min); el total sale de los contadores del kernel.' : 'En Windows, dos muestras de 200 ms.'} Leído hace ${ago(Date.now() / 1000 - Date.parse(t.at) / 1000)} en ${t.ms} ms${cfg.lat_ms != null && cfg.lat_ms > t.ms ? ` (${cfg.lat_ms} ms con ssh)` : ''}${cfg.slow ? ' · nodo lento: se lee cada 60 s' : ''}. Lo que no se puede leer dice «n/d», nunca 0.</div>`}</div>`;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-tdet],[data-tsel],[data-twin],[data-tclose]'); if (!b) return;
+  if (b.dataset.tdet || b.dataset.tsel) S.tn = b.dataset.tdet || b.dataset.tsel;
+  if (b.dataset.twin) S.tw = b.dataset.twin;
+  if (b.dataset.tclose) S.tn = null;
+  writeHash();
+  if (S.tn) { loadRing(); if (b.dataset.tdet) setTimeout(() => document.getElementById('teledet').scrollIntoView({behavior: CALM ? 'auto' : 'smooth', block: 'start'}), 60); } else drawDetail();
+});
+
+async function load() {
+  if (D && !D.__fetched) { render(); if (!D.redacted) { watchStamp(); watchLive(); } return; }   // --demo copies have no stamp   // local file:// copy, data embedded
+  try {
+    const r = await fetch(DATA_URL, {credentials: 'same-origin', cache: 'no-store'});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    D = await r.json(); D.__fetched = true; render();
+  } catch (e) {
+    document.getElementById('app').innerHTML = `<div class="card err">No se pudo leer la instantánea (${esc(e.message)}).</div>`;
+  }
+  setTimeout(load, 120000);
+}
+load();
+</script>
+</body>
+</html>

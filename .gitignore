@@ -1,0 +1,26 @@
+# your machines and your runs: never in git
+nodes.toml
+state/
+jobs.jsonl
+*.db
+*.sqlite
+# secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+# owner-only notes
+docs/private/
+NEEDS-OWNER.md
+HANDOFF.md
+MORNING-REPORT.md
+# python / editors
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

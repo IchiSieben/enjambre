@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Install on the Mac (no sudo): sed "s|__HOME__|$HOME|g" dev.enjambre.tmux.plist > ~/Library/LaunchAgents/dev.enjambre.tmux.plist && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.enjambre.tmux.plist -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>dev.enjambre.tmux</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/tmux</string><string>-L</string><string>enjambre</string>
+    <string>new-session</string><string>-d</string><string>-s</string><string>enjambre</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>AbandonProcessGroup</key><true/>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>__HOME__/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>HOME</key><string>__HOME__</string>
+    <key>LANG</key><string>en_US.UTF-8</string>
+  </dict>
+  <key>StandardOutPath</key><string>__HOME__/enjambre-logs/launchagent-tmux.log</string>
+  <key>StandardErrorPath</key><string>__HOME__/enjambre-logs/launchagent-tmux.log</string>
+</dict>
+</plist>

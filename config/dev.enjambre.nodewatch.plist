@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Install on the Mac (no sudo): copy node-watch.sh to ~/.enjambre/, then
+     sed "s|__HOME__|$HOME|g" dev.enjambre.nodewatch.plist > ~/Library/LaunchAgents/dev.enjambre.nodewatch.plist && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.enjambre.nodewatch.plist -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>dev.enjambre.nodewatch</string>
+  <key>ProgramArguments</key>
+  <array><string>/bin/bash</string><string>__HOME__/.enjambre/node-watch.sh</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>StartInterval</key><integer>60</integer>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
+  <key>StandardOutPath</key><string>__HOME__/enjambre-logs/launchagent-nodewatch.log</string>
+  <key>StandardErrorPath</key><string>__HOME__/enjambre-logs/launchagent-nodewatch.log</string>
+</dict>
+</plist>

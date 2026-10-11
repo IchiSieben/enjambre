@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Install on the Mac (no sudo): sed "s|__HOME__|$HOME|g" dev.enjambre.deskflow.plist > ~/Library/LaunchAgents/dev.enjambre.deskflow.plist && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.enjambre.deskflow.plist -->
+<!-- WHY open(1) and not the binary inside the bundle: LaunchServices starts the app exactly as a
+     double-click does, so TCC sees the same requester and the Accessibility grant still applies. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>dev.enjambre.deskflow</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/open</string><string>-g</string><string>-j</string>
+    <string>-a</string><string>/Applications/Deskflow.app</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
+  <key>StandardOutPath</key><string>__HOME__/enjambre-logs/launchagent-deskflow.log</string>
+  <key>StandardErrorPath</key><string>__HOME__/enjambre-logs/launchagent-deskflow.log</string>
+</dict>
+</plist>

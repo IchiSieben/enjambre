@@ -1,0 +1,51 @@
+# Node registry for enjambre: copy to nodes.toml (git-ignored) and describe YOUR machines.
+#   cp nodes.example.toml nodes.toml
+# One table per machine. The id (win, mac, ...) is what routing.toml `prefer` and the CLI use.
+#
+# max_jobs is a starting point, not a measurement: raise it one job at a time while watching
+# memory pressure, and stop at the first yellow.
+#
+# tags = capabilities the router matches against routing.toml `needs` (docs/conceptos/enrutamiento.md):
+#   headless  can run an unattended job with nobody at the screen
+#   display   has a person and a screen: GUI apps, browser logins
+#   keychain  `claude`/`gh` are logged in for unattended jobs (macOS: through tmux-run.sh)
+#   metal     Apple GPU (Blender Cycles METAL)
+#   mlx       Apple MLX local models
+#   smb       serves (Windows) or mounts (macOS) the shared folders of tutorial 19
+# owned = true: one of YOUR machines (the confidential-path rule in routing.toml allows only these).
+# label = what people read in the visor (it never shows the bare id).
+# runnable = false: the router may consider it, but `enjambre run` has no executor there yet.
+
+[nodes.win]
+label = "PC"
+host = "local"
+os = "windows"
+arch = "x86_64"
+ram_gb = 32
+cores = 8
+max_jobs = 2
+workers = ["claude"]
+tags = ["headless", "display", "keychain", "smb"]
+owned = true
+runnable = false    # the orchestrator: jobs run on the workers (worker.sh needs tmux)
+portfolio = "~/Documents/Portfolio"
+
+[nodes.mac]
+label = "Mac mini"
+host = "mac"        # an alias from ~/.ssh/config (Host mac / HostName / User / IdentityFile)
+host_alt = "mac6"   # optional second alias (e.g. IPv6 link-local): watch switches to it when `mac` stops answering
+os = "macos"
+arch = "arm64"
+ram_gb = 16
+cores = 10
+max_jobs = 2
+workers = ["claude"]
+tags = ["headless", "keychain", "metal", "mlx", "smb"]
+owned = true
+portfolio = "~/Documents/Portfolio"
+
+# [nodes.laptop]
+# label = "Laptop"
+# host = "laptop"
+# os = "linux"
+# ...

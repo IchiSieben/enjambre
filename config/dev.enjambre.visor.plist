@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- visor collector, every 5 min. Install on the Mac (no sudo):
+     mkdir -p ~/.enjambre/visor ~/enjambre-logs && cp collect.py ~/.enjambre/visor/
+     sed "s|__HOME__|$HOME|g" dev.enjambre.visor.plist > ~/Library/LaunchAgents/dev.enjambre.visor.plist && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.enjambre.visor.plist
+     Remove: launchctl bootout gui/$(id -u)/dev.enjambre.visor && rm ~/Library/LaunchAgents/dev.enjambre.visor.plist -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>dev.enjambre.visor</string>
+  <key>ProgramArguments</key>
+  <array><string>/usr/bin/python3</string><string>__HOME__/.enjambre/visor/collect.py</string>
+         <string>--node</string><string>mac</string><string>--models</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>StartInterval</key><integer>300</integer>
+  <key>LowPriorityIO</key><true/>
+  <key>Nice</key><integer>10</integer>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
+  <key>StandardOutPath</key><string>__HOME__/enjambre-logs/launchagent-visor.log</string>
+  <key>StandardErrorPath</key><string>__HOME__/enjambre-logs/launchagent-visor.log</string>
+</dict>
+</plist>

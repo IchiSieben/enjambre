@@ -1,0 +1,64 @@
+# Routing table for `enjambre run` without --node. Read by routing.py; the algorithm is in
+# docs/conceptos/enrutamiento.md. Edit freely: this file is the owner's, not the code's.
+#
+#   needs   capabilities every candidate node must have (nodes.toml `tags`), or a numeric
+#           constraint on a nodes.toml field: "ram>=32" means ram_gb >= 32
+#   prefer  tie-break order; nodes not listed come after, in nodes.toml order
+#
+# Default policy: anything that runs without a screen prefers the Mac (tutorial 18: bash 14-27x,
+# git 2-10x, single-core Python ~2x, Blender Metal 3x). Windows keeps what needs a screen.
+
+[defaults]
+kind = "claude"            # used when there is no --kind, no `kind:` frontmatter and no --classify
+history_min_runs = 5       # ok runs per (kind, node) before history may decide
+mem_free_min_pct = 20      # a node whose memory_pressure free % is below this counts as busy
+mem_fresh_s = 720          # visor snapshot older than this is not trusted (visor STALE_S)
+
+[busy]                     # ~/.enjambre/busy.json on a node (busy.py): a long job is running there
+# kinds that compete with it (GPU / unified memory). Other kinds ignore the marker: a test run
+# next to a bench is fine, memory_pressure still guards it.
+gpu_kinds = ["render", "transcribe", "local-model"]
+
+[workers.claude]           # needs added to every kind when the worker is a `claude -p` agent
+needs = ["keychain"]
+
+[sensitive]                # same rule as enjambre.validate / tercerizar
+pattern = "confidencial|reservado"
+workers = ["claude"]       # only these workers, and only on nodes with owned = true
+
+[kinds.claude]             # an agent editing a repo, nothing special
+needs = ["headless"]
+prefer = ["mac", "win"]
+
+[kinds.tests]
+needs = ["headless"]
+prefer = ["mac", "win"]
+
+[kinds.git]                # history rewrites, big clones, bisect
+needs = ["headless"]
+prefer = ["mac", "win"]
+
+[kinds.scrape]
+needs = ["headless"]
+prefer = ["mac", "win"]
+
+[kinds.render]             # Blender Cycles on the GPU
+needs = ["metal"]
+prefer = ["mac"]
+cpu_fallback = true        # node busy: render on its CPU instead of waiting (slower, no clash)
+
+[kinds.transcribe]         # whisper / diarization on MLX
+needs = ["mlx"]
+prefer = ["mac"]
+
+[kinds.local-model]        # --engine local, modelos-mac
+needs = ["mlx"]
+prefer = ["mac"]
+
+[kinds.gui]                # browser logins, Onshape, anything with a window
+needs = ["display"]
+prefer = ["win"]
+
+[kinds.video-edit]         # CapCut / DaVinci with real footage
+needs = ["display", "ram>=32"]
+prefer = ["win"]

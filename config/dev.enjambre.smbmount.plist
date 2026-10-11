@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Install on the Mac (no sudo): copy smb-mount.sh to ~/.enjambre/, then
+     sed "s|__HOME__|$HOME|g" dev.enjambre.smbmount.plist > ~/Library/LaunchAgents/dev.enjambre.smbmount.plist && launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.enjambre.smbmount.plist
+     Aqua only: the Keychain item is in the login session. Every 60 s = the retry when Windows is off. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>dev.enjambre.smbmount</string>
+  <key>ProgramArguments</key>
+  <array><string>/bin/bash</string><string>__HOME__/.enjambre/smb-mount.sh</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>StartInterval</key><integer>60</integer>
+  <key>LimitLoadToSessionType</key><string>Aqua</string>
+  <key>StandardOutPath</key><string>__HOME__/enjambre-logs/launchagent-smbmount.log</string>
+  <key>StandardErrorPath</key><string>__HOME__/enjambre-logs/launchagent-smbmount.log</string>
+</dict>
+</plist>

@@ -1,0 +1,122 @@
+{
+ "at": "2026-10-10T21:28:20-05:00",
+ "ms": 273,
+ "cpu": {
+  "pct": 26,
+  "per_core": null,
+  "load1": null,
+  "cores": 6,
+  "window_s": 10.7
+ },
+ "mem": {
+  "total_gb": 47.9,
+  "used_gb": 28.7,
+  "wired_gb": null,
+  "compressed_gb": null,
+  "swap_used_gb": null,
+  "commit_gb": 57.0,
+  "load_pct": 60,
+  "pressure": null,
+  "source": "GlobalMemoryStatusEx"
+ },
+ "gpu": {
+  "pct": 1,
+  "vram_used_gb": 2.58,
+  "vram_total_gb": 4.0,
+  "temp_c": 50.0,
+  "source": "nvidia-smi"
+ },
+ "thermal": {
+  "cpu_speed_limit": null,
+  "throttled": null,
+  "temp_c": null,
+  "source": "n/d (MSAcpi_ThermalZoneTemperature: Not supported)"
+ },
+ "top": [
+  {
+   "pid": 49608,
+   "name": "Code.exe",
+   "cpu": 112.9,
+   "rss_gb": 0.22,
+   "tag": null
+  },
+  {
+   "pid": 30128,
+   "name": "Code.exe",
+   "cpu": 35.3,
+   "rss_gb": 0.11,
+   "tag": null
+  },
+  {
+   "pid": 5140,
+   "name": "AvastSvc.exe",
+   "cpu": 28.2,
+   "rss_gb": 0.05,
+   "tag": null
+  },
+  {
+   "pid": 15276,
+   "name": "brave.exe",
+   "cpu": 14.1,
+   "rss_gb": 1.05,
+   "tag": null
+  },
+  {
+   "pid": 10468,
+   "name": "aswidsagent.exe",
+   "cpu": 14.1,
+   "rss_gb": 0.21,
+   "tag": null
+  },
+  {
+   "pid": 13900,
+   "name": "Code.exe",
+   "cpu": 14.1,
+   "rss_gb": 0.21,
+   "tag": null
+  },
+  {
+   "pid": 1664,
+   "name": "dwm.exe",
+   "cpu": 7.1,
+   "rss_gb": 0.32,
+   "tag": null
+  },
+  {
+   "pid": 5264,
+   "name": "aswToolsSvc.exe",
+   "cpu": 7.1,
+   "rss_gb": 0.07,
+   "tag": null
+  },
+  {
+   "pid": 3728,
+   "name": "AvastUI.exe",
+   "cpu": 7.1,
+   "rss_gb": 0.06,
+   "tag": null
+  },
+  {
+   "pid": 37552,
+   "name": "pythonw.exe",
+   "cpu": 7.1,
+   "rss_gb": 0.03,
+   "tag": "enjambre: telemetría"
+  },
+  {
+   "pid": 916,
+   "name": "csrss.exe",
+   "cpu": 7.1,
+   "rss_gb": 0.01,
+   "tag": null
+  },
+  {
+   "pid": 3232,
+   "name": "Memory Compression",
+   "cpu": 0.0,
+   "rss_gb": 4.68,
+   "tag": null
+  }
+ ],
+ "io": null
+}

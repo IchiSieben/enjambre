@@ -1,0 +1,127 @@
+{
+ "blender": {
+  "file": "blender.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/blender/blender-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "css3": {
+  "file": "css3.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/css3/css3-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "docker": {
+  "file": "docker.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/docker/docker-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "git": {
+  "file": "git.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/git/git-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "githubactions": {
+  "file": "githubactions.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/githubactions/githubactions-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "html5": {
+  "file": "html5.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/html5/html5-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "javascript": {
+  "file": "javascript.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/javascript/javascript-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "jupyter": {
+  "file": "jupyter.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/jupyter/jupyter-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "mysql": {
+  "file": "mysql.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/mysql/mysql-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "nodedotjs": {
+  "file": "nodedotjs.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/nodejs/nodejs-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "numpy": {
+  "file": "numpy.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/numpy/numpy-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "oracle": {
+  "file": "oracle.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/oracle/oracle-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "os-windows": {
+  "file": "os-windows.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/windows11/windows11-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "pandas": {
+  "file": "pandas.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/pandas/pandas-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "php": {
+  "file": "php.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/php/php-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "postgresql": {
+  "file": "postgresql.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/postgresql/postgresql-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "python": {
+  "file": "python.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/python/python-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "r": {
+  "file": "r.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/r/r-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "react": {
+  "file": "react.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/react/react-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "scikitlearn": {
+  "file": "scikitlearn.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/scikitlearn/scikitlearn-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "sqlite": {
+  "file": "sqlite.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/sqlite/sqlite-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "streamlit": {
+  "file": "streamlit.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/streamlit/streamlit-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "tailwindcss": {
+  "file": "tailwindcss.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/tailwindcss/tailwindcss-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "typescript": {
+  "file": "typescript.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/typescript/typescript-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ },
+ "vitejs": {
+  "file": "vitejs.svg",
+  "source": "https://cdn.jsdelivr.net/gh/devicons/devicon@v2.16.0/icons/vitejs/vitejs-original.svg",
+  "licence": "MIT, devicon (https://github.com/devicons/devicon)"
+ }
+}

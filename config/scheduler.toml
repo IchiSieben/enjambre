@@ -1,0 +1,46 @@
+# Priority scheduler (prompt 20 §2.3). Read by scheduler.py; the owner edits this file, not code.
+# Classes, highest first: alta > normal > baja > nocturna. Default for a job: normal.
+# Concept and why: docs/conceptos/prioridades.md.
+
+[admision]
+baja_requiere_sin_alta_normal = true   # baja/nocturna start only when no alta/normal runs on that node
+presion_memoria_max = "normal"         # macOS: highest memory pressure that still admits baja (normal|warn)
+mem_disponible_min_pct = 30            # Windows: GlobalMemoryStatusEx available %; macOS uses pressure
+swap_creciendo_ventana_s = 120         # macOS: swap must not have grown in this window
+telemetria_max_edad_s = 120            # older live.json = no data = baja waits (it never guesses)
+
+[nocturna]
+desde = "00:00"
+hasta = "07:00"
+tz = "America/Lima"
+
+[prioridad_so]
+# Prefix the node puts in front of the job's command. alta/normal run as the OS default.
+baja = {macos = "taskpolicy -b nice -n 15", windows = "BelowNormal+EcoQoS"}
+nocturna = {macos = "taskpolicy -b nice -n 19", windows = "Idle+EcoQoS"}
+
+[preempcion]
+pausar_si = "cpu_o_gpu_del_nodo > 70 and presion == normal"
+desalojar_si = "presion != normal or mem_disponible_pct < umbral"
+cpu_gpu_umbral_pct = 70                # the number pausar_si uses
+reanudar_tras_s_libre = 60             # hysteresis: 60 s in a row with no alta/normal running
+agentes = "entre_turnos"               # or "nunca" (NEEDS-OWNER §24)
+alta_puede_exceder_max_jobs = 1        # alta may run max_jobs + 1 when only baja/nocturna run (it pauses them)
+preemptores = ["alta"]                 # who pauses/evicts baja. normal only blocks baja's ADMISSION:
+                                       # a normal agent mostly waits on the API, and pausing a render
+                                       # for its hour would waste the GPU (DECISIONES). Add "normal" here to change it.
+
+[externos.render_lab]
+nodo = "mac"
+url = "http://{host}:8800"             # {host}: the lab is asked FROM its node, so {host} = 127.0.0.1 there
+listar = "GET /jobs"
+pausar = "POST /jobs/{id}/pause"
+reanudar = "POST /jobs/{id}/resume"
+prioridad_por_defecto = "baja"
+puerto_proceso = 8800                  # the lab server's listening port: its renders are tagged "externo"
+logs = "~/dev/lab-video/logs/lab_jobs"   # <id>.log per render on the node: the visor reads its progress line
+
+[no_gestionados]
+cpu_pct = 50                           # a process above this % CPU ...
+rss_gb = 2                             # ... or this resident memory ...
+sostenido_s = 120                      # ... for this long, with no enjambre tag, is listed (never touched)
