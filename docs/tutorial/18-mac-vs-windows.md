@@ -110,7 +110,7 @@ aun con reintento. Razonar más lo hizo 5× más lento sin acertar más.
 ## Cómo verificar
 
 ```
-PS> python scriptsench_compare.py <bundles> <work> windows --claude
+PS> python scripts\bench_compare.py <bundles> <work> windows --claude
 mac$ python scripts/bench_compare.py ~/modelos/benchcmp ~/modelos/benchcmp/work mac --claude
 ```
 
