@@ -1,4 +1,13 @@
+---
+lesson:
+  route: build-stack
+  order: 26
+  level: 2
+---
+
 # 27 — Visor v3: cada fallo con su causa, proyectos ordenables y modelos con veredicto
+
+## Objetivo
 
 **Qué consigues:** abrir el visor (en la PC o desde el celular) y saber, sin abrir una terminal,
 por qué falló cada trabajo, cuánto gastó cada proyecto y en qué aparato, a qué hora del día
@@ -7,6 +16,10 @@ trabajas, y qué modelos locales sirven y cuáles no.
 modelos (NEEDS-OWNER §21).
 **Antes:** [24 — Visor v3, copia web y bandeja](24-visor-web-y-bandeja.md) (F2). El acceso
 directo de Windows está en [20 §4b](20-visor-maestro.md).
+
+## Por qué
+
+En F2 la tarjeta de atención decía «fallido» sin causa y había decenas de modelos locales sin forma de anotar cuáles valen la pena (detalle en §1 y §4).
 
 ## Antes y después
 
@@ -19,6 +32,10 @@ La misma instantánea, en la misma copia web y a 390 px (celular):
 En F2 la tarjeta de atención decía «fallido» y nada más: para saber qué pasó había que entrar
 por ssh y buscar el log. En F3 cada fallo lleva su **por qué**, en una línea, y los fallos con la
 misma causa se agrupan («2 fallidos · exit 2: … unrecognized arguments: --id»).
+
+## Pasos
+
+Los pasos son las secciones numeradas siguientes (§1 a §6).
 
 ## 1. Cada fallo con su causa (parte 1)
 
@@ -126,7 +143,7 @@ nuevo     public_html/visor-app/index.html                188 618 B  sha eb88477
 sin credenciales:  /  401   /data.php  401   /pwa/manifest.webmanifest  200
 ```
 
-## El fallo que encontramos
+## Qué salió mal de verdad (el fallo que encontramos)
 
 Después del deploy, la subida de los datos se bloqueó sola:
 
@@ -135,7 +152,7 @@ Después del deploy, la subida de los datos se bloqueó sola:
 ```
 
 El detector de fugas busca IPs con una expresión `n.n.n.n`, y los trazados SVG de los logos de
-modelos tienen números como `1.01.1.223`. No se filtraba ninguna IP real; el detector hizo su
+modelos tienen números como `<cuatro números separados por puntos>`. No se filtraba ninguna IP real; el detector hizo su
 trabajo y falló cerrado. Arreglo: los logos pasan por una **lista blanca** (`glyph_ok`: solo un
 `<path d>` con datos de trazado, o la placa de monograma de 1 a 3 letras), y el detector revisa
 todo lo demás, nombres de logo incluidos (DECISIONES 235). La subida siguiente pasó (171 072 B).
@@ -144,7 +161,7 @@ todo lo demás, nombres de logo incluidos (DECISIONES 235). La subida siguiente 
 texto. Mejor validar la forma de esos datos y sacarlos del barrido, que aflojar el patrón para
 todos.
 
-## Comprobación
+## Cómo verificar
 
 ```
 PS> python -m unittest discover -s tests
@@ -154,3 +171,12 @@ OK (skipped=1)
 
 Página desplegada con la carga real simulada, a 390 px: ningún error de JS, sin scroll
 horizontal, y ordenar por USD pone arriba el proyecto de mayor gasto.
+
+## Autoevaluación
+
+1. ¿Por qué el detector de fugas bloqueó la subida de datos si no se filtraba ninguna IP?
+   Respuesta: buscaba `n.n.n.n` y los trazados SVG de los logos tienen números como `<cuatro números separados por puntos>`; falló cerrado. Se arregló con una lista blanca (`glyph_ok`).
+2. ¿Qué hace `razones.py` y por qué las pruebas se cuentan aparte?
+   Respuesta: escribe una frase de causa para cada trabajo fallido o incompleto; en las pruebas (sandbox, stubs, `e3-*`, smoke) fallar es su trabajo (DECISIONES 230).
+3. ¿Qué pasa al editar el estado de un modelo sin túnel a la Mac?
+   Respuesta: el visor muestra el comando equivalente `python enjambre.py modelo <key> --status … --nota …`; con túnel hace `PATCH /catalog/<key>` al gestor.

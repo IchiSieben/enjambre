@@ -1,3 +1,10 @@
+---
+lesson:
+  route: build-stack
+  order: 3
+  level: 1
+---
+
 # 02 — Homebrew, Claude Code y el shell de la Mac
 
 ## Objetivo

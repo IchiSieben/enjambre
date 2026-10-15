@@ -1,4 +1,13 @@
+---
+lesson:
+  route: build-stack
+  order: 27
+  level: 3
+---
+
 # 28 — Visor en vivo y telemetría por nodo: qué corre ahora y cómo respira cada máquina
+
+## Objetivo
 
 **Qué consigues:** abrir el visor y ver, sin hacer scroll, lo que está corriendo **ahora** (trabajos
 del enjambre primero, en verde, con el turno avanzando) y, con un botón, el detalle de cada
@@ -8,6 +17,10 @@ pertenecen.
 **Quién lo hace:** Claude Code (sesión del 2026-10-10, prompts 18 paso 1 y 19 pasos 1–3).
 **Antes:** [27 — Visor v3](27-visor-v3.md). Los trabajos largos (`run --detach`) son del
 [tutorial 25](25-trabajos-largos.md) y el puente, del [26](26-puente.md).
+
+## Por qué
+
+El visor decía «en vivo · hace 5 min» pero no mostraba lo que corría en ese momento. Las tres causas están en el §0.
 
 ## 0. El problema
 
@@ -86,7 +99,7 @@ Qué se aprendió de esto:
 - **El límite térmico no aparece** hasta que macOS registra un evento: `pmset -g therm` no
   imprime `CPU_Speed_Limit`. El valor honesto es `null` (desconocido), no 100. Lo que sí se sabe
   es que «no hay aviso térmico registrado».
-- **La GPU estaba al 98 %** y en `ps` no había nada evidente: era el render de lab-video. El
+- **La GPU estaba al 98 %** y en `ps` no había nada evidente: era el render de proyecto-externo. El
   `pgid` del Python (73413) es el pid del panel `cohbench` del tmux de enjambre. Ese cruce es el
   que etiqueta el proceso.
 - `top -l 2` tarda 1,3 s. En su lugar, la CPU se lee de los contadores del kernel con ctypes
@@ -162,6 +175,10 @@ visor.html (file://) -> carga live.js cada 5 s como <script>; ring.js solo con e
   10 s; se recorta solo). El PC guarda una copia en `state/visor/ring-<nodo>.jsonl` y, al
   arrancar, trae el del nodo una vez para que las gráficas no empiecen vacías.
 
+## Pasos
+
+Los pasos son el §3 (ponerlo en marcha), el §7 (reposo) y el §8 (`nodo add`); el §4 es la evidencia.
+
 ## 3. Ponerlo en marcha
 
 ```powershell
@@ -204,20 +221,20 @@ más a menudo. Ahora van primero los trabajos del enjambre y después las sesion
 Claude del trabajo aparecía como una sesión más (`enjambre-sandbox-live-probe2-dc`): ahora se
 pliega en la tarjeta del trabajo.
 
-### b) El render de lab-video sale etiquetado como del enjambre
+### b) El render de proyecto-externo sale etiquetado como del enjambre
 
 ```
 live.json -> telemetria.mac.top:
 {'pid': 84469, 'name': 'Python', 'cpu': 80.2, 'rss_gb': 0.39, 'tag': 'tmux enjambre: cohbench'}
 {'pid': 84574, 'name': 'ffmpeg', 'cpu': 13.0, 'tag': 'tmux enjambre: cohbench'}
-{'pid': 43632, 'name': 'claude', 'cpu': 14.3, 'rss_gb': 0.23, 'tag': 'sesión: lab-video-5b'}
+{'pid': 43632, 'name': 'claude', 'cpu': 14.3, 'rss_gb': 0.23, 'tag': 'sesión: proyecto-externo-5b'}
 ```
 
-**Cumplido, con un matiz:** el render (`coherence_bench.sh` → `python -m lab-video.cli bench …`) no
+**Cumplido, con un matiz:** el render (`coherence_bench.sh` → `python -m externo.cli bench …`) no
 se lanzó con `run --detach`, sino dentro de la sesión `cohbench` del tmux de enjambre
 (`tmux-run.sh`). Por eso no tiene id en el ledger, y la etiqueta es `tmux enjambre: cohbench`,
 no `trabajo: <id>`. La sesión de Claude que lo dirige se etiqueta aparte
-(`sesión: lab-video-5b`).
+(`sesión: proyecto-externo-5b`).
 
 *(captura del entorno real: no se publica; ver docs/CAPTURAS.md para las del modo demo)*
 
@@ -249,6 +266,10 @@ python enjambre.py script --repo enjambre-sandbox --cmd cpu-burn --node mac     
   miden desde el prompt 22 ([31](31-pulido-visor.md)).
 - `%CPU` de un proceso en macOS es la media móvil de `ps` (~1 min). El total de la máquina sale de
   los contadores del kernel en la ventana del ciclo, así que pueden no cuadrar en un instante.
+
+## Qué salió mal de verdad
+
+Los errores del §6, más los de la sonda corta y el orden de «Corriendo» (§4 a) y los de `nodo add` (final del §8).
 
 ## 6. Errores que aparecieron (para que nadie los repita)
 
@@ -361,6 +382,28 @@ mac$ launchctl print gui/$(id -u)/dev.enjambre.visor.macprueba → no cargado; 0
   `state =`, y `launchctl print` solo sale con 0 si el servicio está cargado.
 - Entre los dos intentos, `nodo rm` dejó `nodes.toml` idéntico. Es la prueba de que deshacer
   funciona incluso a medias.
+
+## Cómo verificar
+
+```powershell
+python enjambre.py live --print          # un ciclo: imprime live.json entero
+python -m unittest tests.test_live tests.test_telemetria    # 26 tests (según HANDOFF)
+python enjambre.py visor                 # abre el visor -> Detalle en una tarjeta de nodo
+```
+
+Resultados esperados, ya obtenidos arriba: en §4 a) el trabajo aparece en < 30 s, en verde y con el turno
+avanzando (0 → 5 → 12 → 18); en §4 c) la CPU de la Mac pasa de ~13 % a 88–98 %; en §8 `nodo add` termina con los
+cuatro pasos en `ok` y `nodo rm` deja `nodes.toml` idéntico. Pendiente: el reposo se probó con un caso preparado, no
+con presión de memoria real.
+
+## Autoevaluación
+
+1. ¿Por qué el visor carga `live.js` y no hace `fetch('live.json')`?
+   Respuesta: una página `file://` no puede hacer `fetch()` de un archivo vecino (Chromium lo bloquea), pero sí cargarlo como script.
+2. ¿Cuándo una máquina deja de recibir trabajo por «sin memoria»?
+   Respuesta: cuando la presión de memoria es distinta de `normal` durante al menos 5 minutos seguidos (sin huecos); entonces `run` encola o elige otro nodo.
+3. ¿Por qué un trabajo `dead` nunca sale en verde?
+   Respuesta: `dead` significa que el supervisor ya no existe; así lo define el §2 («nunca sale en verde»). `stalled` (latido parado > 5 min) va en ámbar.
 
 > **Cable Ethernet (19 §8):** las medidas Wi-Fi vs Ethernet están en
 > [29 — §8](29-prioridades.md#8-wi-fi-vs-ethernet-prompt-19-8-2026-10-10).

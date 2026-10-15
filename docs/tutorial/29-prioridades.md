@@ -1,6 +1,15 @@
+---
+lesson:
+  route: build-stack
+  order: 28
+  level: 3
+---
+
 # 29 — Prioridades: que lo urgente pase delante sin matar lo que espera
 
-**Qué consigues:** cada trabajo lleva una clase (**alta > normal > baja > nocturna**). Un baja
+## Objetivo
+
+Cada trabajo lleva una clase (**alta > normal > baja > nocturna**). Un baja
 solo arranca cuando la máquina está libre. Si llega un alta, el baja se **pausa** (o se
 **desaloja** si falta memoria y tiene checkpoint) y se **reanuda solo** 60 s después de que el alta
 termine. Un nocturna espera a la ventana de 00:00 a 07:00 en Lima. El visor dice en cada momento
@@ -9,9 +18,9 @@ qué clase tiene cada trabajo, en qué estado está y **por qué**.
 **Antes:** [28 — Visor en vivo y telemetría](28-telemetria.md). El concepto, en corto:
 [conceptos/prioridades.md](../conceptos/prioridades.md).
 
-## 0. El problema
+## Por qué (0. El problema)
 
-La Mac hace de todo: renders de lab-video de una hora, suites de tests de Landing, agentes de
+La Mac hace de todo: renders de proyecto-externo de una hora, suites de tests de Landing, agentes de
 farmacias. Hasta ahora, el primero que llegaba se quedaba la máquina. Un render de fondo podía
 retrasar media hora una verificación que el owner estaba esperando. Matar el render a mano
 tampoco era solución: se perdía todo lo que llevaba hecho. Faltaban tres cosas:
@@ -20,6 +29,10 @@ tampoco era solución: se perdía todo lo que llevaba hecho. Faltaban tres cosas
 2. **Una forma de frenar** lo que ya corre sin perderlo: pausar (SIGSTOP) o, si tiene checkpoint,
    detenerlo limpio y retomarlo después.
 3. **Que se vea por qué**: «esperando» sin motivo es igual de opaco que antes.
+
+## Pasos
+
+Las secciones numeradas 1 a 6 son los pasos: reglas, admisión, prioridad del sistema, preempción, externos y controles del visor.
 
 ## 1. Las reglas, en un archivo
 
@@ -185,9 +198,9 @@ Las cuatro fases en el visor:
 *(captura del entorno real: no se publica; ver docs/CAPTURAS.md para las del modo demo)*
 *(captura del entorno real: no se publica; ver docs/CAPTURAS.md para las del modo demo)*
 
-## 5. Externos: el lab de lab-video
+## 5. Externos: el lab de proyecto-externo
 
-El lab (`uvicorn lab-video.lab.app:app`, puerto 8800 en la Mac) tiene su propia cola y su propia API
+El lab (`uvicorn externo.lab.app:app`, puerto 8800 en la Mac) tiene su propia cola y su propia API
 de pausa: `POST /jobs/{id}/pause|resume`, que hace SIGSTOP/SIGCONT al render. Enjambre no lanza
 esos renders, pero los **adopta**: `collect.py --lab` lee `GET /jobs`, y cada render activo entra
 en el planificador como baja. La pausa va por la API del lab, llamada **desde la propia Mac**
@@ -216,8 +229,8 @@ que dice el lab de sí mismo y `visor` es lo que muestra `live.json`:
 `state/scheduler.jsonl`:
 
 ```json
-{"action": "pause",  "key": "lab:363b069e", "source": "render_lab", "at": "2026-10-11T03:03:11+00:00", "ok": true, "msg": "HTTP 200", "by": "planificador"}
-{"action": "resume", "key": "lab:363b069e", "source": "render_lab", "at": "2026-10-11T03:05:18+00:00", "ok": true, "msg": "HTTP 200", "by": "planificador",
+{"action": "pause",  "key": "lab:363b069e", "source": "externo_lab", "at": "2026-10-11T03:03:11+00:00", "ok": true, "msg": "HTTP 200", "by": "planificador"}
+{"action": "resume", "key": "lab:363b069e", "source": "externo_lab", "at": "2026-10-11T03:05:18+00:00", "ok": true, "msg": "HTTP 200", "by": "planificador",
  "reason": "reanudado: nodo libre de alta durante 63 s"}
 ```
 
@@ -360,7 +373,7 @@ usa la link-local de `en0`; la `%4` es el índice de la tarjeta del PC y no camb
 `ssh mac6` → `…%en0`.
 
 En el código no había ninguna IP fija: `nodes.toml` usa `host = "mac"`, `smb-mount.sh` y el
-puente van por el alias, y el lab de lab-video escucha en `0.0.0.0:8800` y enjambre le habla
+puente van por el alias, y el lab de proyecto-externo escucha en `0.0.0.0:8800` y enjambre le habla
 desde la propia Mac (127.0.0.1). La IP vieja solo aparece en documentos históricos y en logs de
 corridas viejas. `routing.toml` tampoco tiene ninguna (revisado en el prompt 21 §1). Para que
 siga así, `tests/test_no_fixed_ips.py` falla si aparece una dirección de la LAN en la config, los
@@ -395,3 +408,32 @@ Hubo trabajos de Landing corriendo en la Mac durante las tres medidas. Por eso s
 no los 5 por defecto.
 
 **Siguiente:** [30 — Arranque desatendido](30-arranque.md).
+
+## Qué salió mal de verdad
+
+Fallos reales de esta práctica, cada uno con su arreglo en la sección indicada:
+
+- Windows no trae `tzdata`: la ventana nocturna no podía leer America/Lima. Arreglo: desfase fijo de −5 y ventana cerrada si la zona es ilegible (§2).
+- La tabla de historial del visor dejó de pintarse con `RangeError: Invalid time value`: `enqueued` es texto ISO y se trataba como segundos (§5).
+- macOS no trae el binario `setsid`; el heredoc `PY` rompió un test. Arreglo: helper `setsid.py` y heredoc `SETSID` (§3).
+- EcoQoS no hace nada en Windows 10 (build 19045); la prioridad de clase sí se aplica (§3).
+- La primera versión olvidaba la pausa en el tick siguiente. Arreglo: 45 s de gracia, `ECHO_GRACE_S` (§4).
+
+## Cómo verificar
+
+Con las salidas ya mostradas arriba:
+
+1. Encolar un nocturna fuera de ventana: `python enjambre.py script --node mac --repo enjambre-sandbox --cmd cpu-burn --priority nocturna`. Esperado: `enjambre scheduler [nocturna] waiting_window: esperando la ventana nocturna: abre mañana a las 00:00 (America/Lima)`.
+2. Lanzar un baja (`cpu-burn-ck`) y, a los 40 s, un alta. Esperado en `live.json`: `paused_by_priority`, con el motivo «pausado por … (alta)».
+3. Con el baja pausado, `ps` en la Mac debe mostrar el baja en estado `T` con NI 15 / PRI 4, y el alta con NI 0 / PRI 31.
+4. A los 60 s sin alta, el baja pasa a `running` con «reanudado: nodo libre de alta durante 64 s» y termina `ok`.
+5. En `jobs.jsonl`, la línea del baja lleva `preemptions` con los dos cambios de estado.
+
+## Autoevaluación
+
+1. ¿Cuándo se desaloja un baja en vez de pausarlo?
+   Respuesta: cuando falta memoria y tiene checkpoint (`--resumable`). Sin checkpoint solo se pausa; nunca se desaloja.
+2. ¿Quién reanuda un trabajo que se pausó a mano?
+   Respuesta: nadie solo. El planificador no lo toca; lo reanuda el owner (`enjambre reanudar` o el botón del visor).
+3. ¿Por qué la pausa pasa por `control.json` y no por el PC directamente?
+   Respuesta: para que `status.json` tenga un único escritor; el supervisor del trabajo, en la Mac, aplica la orden.

@@ -1,12 +1,21 @@
+---
+lesson:
+  route: build-stack
+  order: 22
+  level: 2
+---
+
 # 23 — El mandamiento: toda sesión sabe que la Mac existe
 
-**Qué consigues:** cualquier sesión de Claude Code, en cualquier carpeta y en las dos máquinas,
+## Objetivo
+
+Cualquier sesión de Claude Code, en cualquier carpeta y en las dos máquinas,
 arranca sabiendo que la Mac es un nodo de trabajo y que se le delega por enjambre. Si intenta
 un `ssh mac` a pelo, un hook la frena y le dice qué usar.
 **Quién lo hace:** Claude Code (sesión 13, 2026-10-07). Tú, nada: solo reiniciar Claude Code
 para que cargue la regla nueva.
 
-## Por qué así: política + mecanismo
+## Por qué: política + mecanismo
 
 Un agente no recuerda nada entre sesiones. Solo sabe lo que entra a su contexto al arrancar.
 Lo que se carga en **toda** sesión, en cualquier carpeta, vive en `~/.claude/`: el `CLAUDE.md`
@@ -19,6 +28,10 @@ ve el comando y puede frenarlo con un mensaje. Es el mismo reparto que en el enr
 `routing.toml` dice qué se quiere y las funciones puras de `routing.py` lo hacen cumplir. Ficha
 de concepto: [Política y mecanismo](../conceptos/politica-y-mecanismo.md).
 
+## Pasos
+
+Los cuatro pasos siguientes son los pasos de la práctica.
+
 ## Paso 1 — La regla (política)
 
 La regla está en `orquestador/home/.claude/rules/enjambre.md` y se instala en
@@ -27,11 +40,11 @@ Dice cuatro cosas:
 - La Mac es el nodo para todo lo que no necesita pantalla.
 - Se delega con `enjambre.py run|render|status`, nunca con `ssh mac`.
 - Antes de la primera delegación, el repo tiene que tener `AGENTS.md` y `docs/DELEGAR.md`.
-- Con `confidencial` u `reservado` en la ruta, solo trabaja el worker `claude` en máquinas propias.
+- Con una palabra restringida en la ruta, solo trabaja el worker `claude` en máquinas propias.
 
 **Por qué no va en `CLAUDE.md`, como pedía el prompt.** Hubo dos razones:
 - `CLAUDE.md` ya está en 70 de sus 72 líneas, y ese tope es un presupuesto de contexto.
-- `CLAUDE.md` se publica en `claude-kit`, y el filtro de publicación rechaza `confidencial`/`reservado`.
+- `CLAUDE.md` se publica en `claude-kit`, y el filtro de publicación rechaza las palabras restringidas.
 
 Los archivos de `rules/` se cargan igual en todas las sesiones, y `rules/personal.md` ya lo
 había probado. **El prompt decía `run|render|check`, pero `check` no existe** (`enjambre.py` tiene
@@ -111,3 +124,33 @@ En la Mac, el `git pull` va por `tmux-run.sh` porque las credenciales están en 
   TASK con `kind: tests`/`scrape`, o el salto explícito.
 - farmacias y Metallum tienen `ssh mac` en su `DELEGAR.md` sin commitear. Lo arreglan sus
   ventanas con la línea de NEEDS-OWNER §16.
+
+## Qué salió mal de verdad
+
+No se registró un fallo de ejecución en esta práctica: HANDOFF (sesión 13) la da por hecha y las pruebas (a) a (d) pasaron. Los tropiezos anotados fueron de diseño:
+
+1. El prompt pedía `run|render|check`, pero `check` no existe; la regla dice `status` (DECISIONES 168).
+2. El prompt pedía la regla en `CLAUDE.md`, que ya estaba en 70 de 72 líneas y se publica en `claude-kit` con un filtro que rechaza las palabras restringidas; fue a `rules/enjambre.md` (DECISIONES 167).
+3. `ENJAMBRE_RAW_SSH=1 ssh mac …` no es visible para el hook como variable de entorno, porque solo existe para el `ssh` que corre después; el hook la busca dentro del texto del comando.
+4. La prueba no se podía hacer en `enjambre-sandbox`: coincide con `enjambre-*` y el hook la deja pasar; se usó un repo temporal.
+
+## Cómo verificar
+
+```
+PS> bash tests/enjambre_guard_test.sh      # 28 casos; en la Mac también con /bin/bash 3.2
+```
+
+Resultado esperado: 28 OK en Windows (bash 5) y en la Mac (bash 3.2.57 y 5.3). Después, desde un repo temporal fuera de `enjambre*` y `orquestador`:
+
+- una sesión nueva de `claude -p` cita `# Two machines, one swarm` (salida en salidas/23-prueba-a-mac.txt);
+- `ssh mac echo hola` queda bloqueado con el mensaje del hook (código 2);
+- `ENJAMBRE_RAW_SSH=1 ssh mac echo hola` imprime `hola` y deja una línea `raw_ssh:1` en `~/.claude/logs/events.jsonl`.
+
+## Autoevaluación
+
+1. ¿Qué diferencia hay entre política y mecanismo aquí?
+   Respuesta: la regla de `~/.claude/rules/enjambre.md` es política (el modelo la lee y casi siempre la sigue); el hook `PreToolUse` es mecanismo (frena el comando con código 2 aunque el modelo no la siga).
+2. ¿Por qué el hook acepta `Bash|PowerShell` y no solo `Bash`?
+   Respuesta: PowerShell es la terminal principal en Windows; con solo `Bash` quedaría un agujero.
+3. ¿Qué pasa si falta `jq` o `nodes.toml` no se puede leer?
+   Respuesta: el hook deja pasar el comando; un hook roto no debe impedir trabajar.

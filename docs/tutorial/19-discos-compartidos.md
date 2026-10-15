@@ -1,10 +1,21 @@
+---
+lesson:
+  route: build-stack
+  order: 18
+  level: 2
+---
+
 # 19 — Discos compartidos: la Mac usa carpetas de Windows como propias
 
-**Objetivo:** que la Mac vea `F:\Compartido-Mac` (intercambio y videos) y `F:\Backup-Mac` (su
+## Objetivo
+
+Que la Mac vea `F:\Compartido-Mac` (intercambio y videos) y `F:\Backup-Mac` (su
 respaldo, solo lectura) como carpetas montadas. Que se monten solas al iniciar sesión,
 reintenten si Windows no está y que `enjambre watch` diga si siguen vivas.
 
-**Por qué:** copiar con `scp` sirve para un archivo, no para un flujo de trabajo. SMB es el
+## Por qué
+
+Copiar con `scp` sirve para un archivo, no para un flujo de trabajo. SMB es el
 protocolo de carpetas compartidas de Windows, y macOS lo habla de serie. Dos ideas para entender
 los permisos:
 - **Se comparten carpetas, no discos enteros.** Un error expone una carpeta, no todo el disco.
@@ -201,6 +212,21 @@ Remove-NetFirewallRule -Group enjambre-LAN
    `usuario-smb` lectura por NTFS en `Backup-Mac`, pero `icacls F:\` mostró que *Authenticated Users*
    tiene Modificar heredado en todo F:. Esa lectura no habría quitado nada. Arreglo: una entrada
    *Deny* para escribir y borrar, y quitar los recursos viejos antes de crear los nuevos.
+
+## Cómo verificar
+
+Pendiente: el montaje real no se ha podido comprobar, porque el dueño no ha ejecutado los
+bloques A y D de `NEEDS-OWNER` §11. Lo único medido hasta hoy es la línea base con `scp`.
+Cuando se ejecuten, los comandos son estos:
+
+```
+mac$ cat ~/.enjambre/mounts.json                 # cada recurso debe decir "ok": true
+PS> python enjambre.py status                    # una línea "share ..." por recurso
+PS> bash tools/smb-bench.sh 5                    # llena smb_read_mbs y smb_write_mbs
+```
+
+Observado hoy (antes del bloque A): `reach_445: true`, `keychain: false`, estado `no-keychain`, y
+`scp` a 53,4 MB/s (Windows a Mac) y 66,7 MB/s (Mac a Windows), con las columnas SMB en `null`.
 
 ## Autoevaluación
 

@@ -1,3 +1,10 @@
+---
+lesson:
+  route: build-stack
+  order: 13
+  level: 2
+---
+
 # 12 — La Mac para 3D y para estudiar
 
 ## Objetivo

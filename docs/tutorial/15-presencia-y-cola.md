@@ -1,3 +1,10 @@
+---
+lesson:
+  route: build-stack
+  order: 14
+  level: 3
+---
+
 # 15 — Presencia de nodos y cola de trabajos
 
 > La página 12 es la de 3D y estudio; las 13–14 están reservadas para las sesiones B y C de `prompts/09-sesiones-2026-10-04.md`.
@@ -71,7 +78,7 @@ el sondeo que lo devolvió a `ready` fue real.*
 
 Qué pasa por dentro:
 
-- **El contrato se valida antes de encolar.** La regla `confidencial`/`reservado`, el `AGENTS.md` y las secciones
+- **El contrato se valida antes de encolar.** La regla de repos restringidos, el `AGENTS.md` y las secciones
   de la tarea se comprueban igual que si se ejecutara ya. Un trabajo inválido nunca entra a la
   cola.
 - **Se guarda una copia de la tarea** (`state/queue/<id>/TASK-<id>.md`) y de las variables

@@ -1,10 +1,21 @@
+---
+lesson:
+  route: build-stack
+  order: 20
+  level: 2
+---
+
 # 21 — Modelos locales, ronda 2: catálogo, banco de pruebas y elección automática
 
-**Objetivo:** pasar de "cinco modelos elegidos a mano" a un catálogo que se pueda consultar,
+## Objetivo
+
+Pasar de "cinco modelos elegidos a mano" a un catálogo que se pueda consultar,
 un banco de pruebas que mida a todos con las mismas entradas y un gestor que elija solo el
 modelo de cada tarea, explicando por qué.
 
-**Por qué:** con 16 GB de memoria unificada, el límite no es el disco (la Mac tiene ~240 GB
+## Por qué
+
+Con 16 GB de memoria unificada, el límite no es el disco (la Mac tiene ~240 GB
 libres) sino la memoria: Metal deja usar unos 12,7 GB. Un modelo puede brillar en su ficha y
 no caber, o caber y equivocarse en español. La única forma honesta de elegir es **medir**:
 calidad con respuesta conocida, velocidad, memoria pico y tiempo de carga. Y fijar **antes** el
@@ -194,8 +205,8 @@ Reply from fe80::…%4: time=129ms          # por IPv6 responde
 win$ ping -4 -n 1 <mac>.local
 Request timed out.                          # por IPv4, no
 win$ route print -4 | grep "<red-casa>"
-      <red-casa>    255.255.255.0         On-link     <ip-windows>    281
-      <red-casa>    255.255.255.0         On-link     <ip-vpn>      1
+      <red-casa>    <máscara /24>         On-link     <ip-windows>    281
+      <red-casa>    <máscara /24>         On-link     <ip-vpn>      1
 ```
 
 La segunda ruta es de la VPN corporativa (adaptador "PANGP"): reclama la red de casa con métrica
@@ -391,3 +402,54 @@ Si no, `--device CPU` o esperar a que `busy.json` desaparezca.
 
 **Cierre.** Lo que no se pudo medir desatendido queda anotado con su comando en NEEDS-OWNER §13:
 `ministral14` con contexto largo, LTX con la Mac vacía y la elección de diarizador.
+
+## Qué salió mal de verdad
+
+Todo esto ocurrió y está descrito en los pasos de arriba:
+
+1. `download.py` falló con `KeyError: 'task'` tras bajar 9 GB: las entradas nuevas usan `tasks = [...]` (paso 2).
+2. Una descarga en paralelo bajó el respaldo de 48 a 2 MB/s; se pausó con `kill -STOP` (paso 3).
+3. `urlretrieve` truncó FLEURS (`ContentTooShortError`); se cambió por `curl --retry 5 -C -` (paso 5).
+4. El registro de 5000 líneas llevó a Qwen3.5-9B a 12,2 GB de huella y 9,7 GB de swap (paso 6).
+5. `tmux has-session -t sesion-g` acertó por prefijo, y `-t =sesion-g` falló en zsh sin comillas (paso 7).
+6. La VPN corporativa hizo que la Mac pareciera caída; el alias `mac6` por IPv6 la alcanzó (paso 8).
+7. El vigilante mataba a `time` y dejaba huérfano al hijo con el modelo: pánico del kernel por *watchdog*. Se arregló con `start_new_session=True` y `os.killpg` (pasos 8 y 9).
+8. Los "ok" del 05-10 estaban contaminados por huérfanos (velocidad a la mitad) y se re-midieron el 07-10 (paso 10).
+9. La URL de *Big Buck Bunny* dio 404 y el filtro `coreimage` necesita `filter=CIComicEffect@default` (paso 10).
+10. Metal se quedó sin memoria a 32k y se perdían los resultados de 2k y 8k; ahora se guarda tras cada tamaño (paso 10).
+
+## Cómo verificar
+
+Tres comandos y su salida esperada, copiados de los pasos:
+
+```
+win$ python scripts/catalog_check.py
+llm_alt           9.04 GB  apache-2.0             gated=False 2026-09-15  mlx-community/gemma-4-12B-it-qat-OptiQ-4bit
+...
+diar_alt          0.03 GB  cc-by-4.0              gated=auto  2025-09-29  pyannote/speaker-diarization-community-1  <-- CHECK
+```
+
+```
+mac$ python scripts/run_watched.py --label t2 --out /tmp/t2.jsonl --timeout 3 -- sleep 97
+{"label": "t2", "rc": -9, "wall_s": 4.1, "killed": "timeout", …}
+mac$ pgrep -fl "sleep 97"
+                                      # vacío: no queda nadie
+```
+
+```
+mac$ curl -s 127.0.0.1:8765/catalog
+"text": {"model": "llm_alt", "reason": "medido el 2026-10-07: aciertos QA 0.967, ..."}
+```
+
+Antes de la medición, la razón decía `predeterminado de models.toml` en todas las tareas.
+
+## Autoevaluación
+
+1. ¿Por qué hay que fijar el umbral de "sirve" antes de medir?
+   Respuesta: para poder declarar "ninguno sirve" sin ajustar el criterio a los resultados; en imagen las tres opciones ocupan más de 12 GB y por eso no se elige ninguna.
+2. ¿Por qué el vigilante anterior dejaba procesos huérfanos?
+   Respuesta: mataba a `/usr/bin/time`, que no reenvía la señal al hijo con el modelo; el arreglo es poner al hijo en su propio grupo de procesos y matar el grupo entero.
+3. ¿Por qué se descartaron los "ok" del 05-10?
+   Respuesta: corrieron mientras los huérfanos seguían vivos; la calidad era igual pero la velocidad estaba a la mitad (20,3 contra 37,2 tok/s en `llm:qa`).
+
+Pendiente (NEEDS-OWNER §13): la elección del diarizador, `ministral14` con contexto largo y LTX con la Mac vacía.

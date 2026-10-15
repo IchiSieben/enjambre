@@ -1,9 +1,20 @@
+---
+lesson:
+  route: build-stack
+  order: 21
+  level: 3
+---
+
 # 22 — El enrutador: que el enjambre elija la máquina solo
 
-**Objetivo:** que `enjambre run` sin `--node` elija el nodo, explique por qué en una línea y,
+## Objetivo
+
+Que `enjambre run` sin `--node` elija el nodo, explique por qué en una línea y,
 por defecto, mande a la Mac todo lo que se puede hacer sin pantalla.
 
-**Por qué:** hasta aquí cada trabajo llevaba `--node mac` escrito a mano. Eso obliga a recordar
+## Por qué
+
+Hasta aquí cada trabajo llevaba `--node mac` escrito a mano. Eso obliga a recordar
 qué sabe hacer cada máquina y si está despierta. El concepto detrás es el
 [enrutamiento](../conceptos/enrutamiento.md): una tabla que puedes leer y corregir, más el
 estado vivo de los nodos. Sin IA en el camino: elegir nodo es una decisión repetible.
@@ -49,7 +60,7 @@ Cada nodo declara en `nodes.toml` lo que tiene (`tags`):
 | `mlx` | — | sí | modelos locales del gestor `modelos-mac` |
 | `smb` | sí | sí | carpetas compartidas del paso 19 |
 
-Más `owned = true` (es una máquina tuya: la regla `confidencial`/`reservado` solo permite esas) y
+Más `owned = true` (es una máquina tuya: la regla de repos restringidos solo permite esas) y
 `runnable = false` en Windows (ver el paso 5).
 
 ### 3. La tabla: `routing.toml`
@@ -128,7 +139,7 @@ sonda en vivo por el alias que sí respondía (ver el error 3).
 | scraping de `farmacias` | scrape | encola → mac | **mac** | sin pantalla → Mac |
 | revisar `Metallum` en el navegador | gui | rechaza | rechaza | solo Windows tiene `display`, y no tiene ejecutor |
 | editar video de `forja` | video-edit | rechaza | rechaza | la Mac no tiene `display` ni 32 GB; Windows sí, pero no tiene ejecutor |
-| tests de un repo `ejemplo-confidencial` con worker `agy` | tests | rechaza | rechaza | regla `confidencial`/`reservado`: solo worker `claude` en máquinas propias |
+| tests de un repo `ejemplo-restringido` con worker `agy` | tests | rechaza | rechaza | regla de repos restringidos: solo worker `claude` en máquinas propias |
 
 *(captura del entorno real: no se publica; ver docs/CAPTURAS.md para las del modo demo)*
 *Render de la salida real con `freeze`.*
@@ -142,7 +153,7 @@ por encima del piso de 20 %. Por eso no contó como ocupada.
 
 - filtro duro: capacidad que falta, `ram>=32` contra un nodo sin medir, nodo sin ejecutor, tipo
   desconocido;
-- regla `confidencial`/`reservado`;
+- regla de repos restringidos;
 - sin datos;
 - con historia, incluidos el caso de un solo nodo medido y el de 4 corridas;
 - empate;
@@ -160,7 +171,7 @@ OK
 
 Los cuatro suites que ya existían siguen en verde.
 
-## Errores reales y cómo se arreglaron
+## Qué salió mal de verdad (errores reales y cómo se arreglaron)
 
 1. **La forma de tabla del prompt no es TOML válido.** `[kinds.tests] needs = [...] prefer = [...]`
    en una sola línea no se puede parsear. Arreglo: una clave por línea bajo cada `[kinds.x]`.
@@ -177,6 +188,8 @@ Los cuatro suites que ya existían siguen en verde.
    verdad a una Mac inalcanzable. Arreglo: `health_fn=None` y resolverlo dentro de la función.
 5. **La captura salió con `acci�n`.** La consola de Windows escribe en cp1252. Arreglo: texto sin
    tildes en la cabecera de la captura.
+
+## Pasos (continuación: sesión R2)
 
 ### 8. La Mac avisa que está ocupada (sesión R2)
 
@@ -249,3 +262,29 @@ Se usó un worker `stub-ok`, que no llama a ningún modelo: cuesta $0 y no compi
 - Envolver con `busy.sh run` los lanzadores de bancos, LTX y transcripción la próxima vez que
   se lancen. `sesion_g2_run.sh` no se tocó porque estaba corriendo.
 - Más trabajos reales por el router, para que la historia empiece a decidir. El primero ya está.
+
+## Cómo verificar
+
+```
+PS> python -m unittest discover -s tests
+Ran 96 tests in 0.425s
+OK
+```
+
+(Cifra de la sesión R; HANDOFF anota 124 OK al cerrar R2.)
+
+```
+PS> python enjambre.py run --repo enjambre-sandbox --task tasks/TASK-queue-stub.md --kind tests --dry-run
+enjambre route [rule] queue: tests: mac is down; queued until it is ready (win: fits, but has no executor yet (runnable = false))
+```
+
+Con la Mac alcanzable, la misma ruta en seco elige `mac` (tabla del paso 6). La corrida real del paso 9 deja en el ledger `"kind": "tests"`, `"routed_by": "rule"` y `"exit": 0`.
+
+## Autoevaluación
+
+1. ¿Qué dos cosas decide el enrutador y de dónde sale cada una?
+   Respuesta: qué necesita el trabajo (`routing.toml`, por tipo) y qué nodos lo cumplen y están libres (etiquetas de `nodes.toml` más el estado vivo). Sin IA en el camino.
+2. ¿Por qué Windows encaja pero no recibe trabajos?
+   Respuesta: tiene `runnable = false`, porque `worker.sh` necesita tmux y `/usr/bin/python3`, y Git Bash no los tiene. El router lo dice y encola para la Mac.
+3. ¿Cómo sabe el router que la Mac está ocupada con un banco que corre en tmux?
+   Respuesta: el trabajo largo escribe `~/.enjambre/busy.json` con su pid; el lector comprueba si ese pid sigue vivo, y si no, el marcador está viejo y no cuenta.

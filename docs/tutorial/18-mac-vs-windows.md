@@ -1,9 +1,20 @@
+---
+lesson:
+  route: build-stack
+  order: 17
+  level: 2
+---
+
 # 18 — Mac vs Windows con las mismas tareas, y modelo local vs `claude -p`
 
-**Objetivo:** saber con números qué conviene mandar a la Mac: tests, build, git, un trabajo real
+## Objetivo
+
+Saber con números qué conviene mandar a la Mac: tests, build, git, un trabajo real
 de `claude -p`, y si un modelo local de 9B reemplaza a `claude -p` para código.
 
-**Por qué:** "la Mac es más rápida" no sirve para decidir. Hay que separar dos cosas que el
+## Por qué
+
+"la Mac es más rápida" no sirve para decidir. Hay que separar dos cosas que el
 reloj mezcla: el tiempo del **modelo en la nube** (igual en cualquier máquina) y el tiempo
 **local** (arrancar Node, hooks, servidores MCP, lanzar procesos). Solo el segundo depende de
 la máquina.
@@ -95,6 +106,19 @@ aun con reintento. Razonar más lo hizo 5× más lento sin acertar más.
    `cmd.exe` corta los argumentos en el primer salto de línea. Arreglo: el prompt va por stdin.
 4. **Borrar el clon de prueba fallaba en Windows**: los *packs* de git son de solo lectura.
    Arreglo: quitar el atributo y reintentar dentro de `rmtree`.
+
+## Cómo verificar
+
+```
+PS> python scriptsench_compare.py <bundles> <work> windows --claude
+mac$ python scripts/bench_compare.py ~/modelos/benchcmp ~/modelos/benchcmp/work mac --claude
+```
+
+Esperado (medianas de 3, paso 2): tests de statusline 15,40 s en Windows contra 1,08 s en la
+Mac; `build-kit.sh` 16,98 s contra 0,62 s; tests de enjambre (Python) 0,55 s contra 0,35 s.
+`claude -p` con el trabajo real: local 30,4 s en Windows contra 4,0 s en la Mac. Ambos lados
+clonan del mismo bundle (orquestador `89ae2fd`, enjambre `6a14b6e`). Con n pequeño, los números
+son orientativos.
 
 ## Límites
 

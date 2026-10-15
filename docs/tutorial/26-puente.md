@@ -1,4 +1,13 @@
+---
+lesson:
+  route: build-stack
+  order: 25
+  level: 3
+---
+
 # 26 — El puente: un Claude Code persistente en la Mac al que Windows le habla
+
+## Objetivo
 
 **Qué consigues:** desde Windows (desde una terminal o desde otra sesión de Claude Code) le
 escribes a un Claude Code que **sigue vivo** en la Mac, con navegador (Playwright), y que recuerda
@@ -16,6 +25,10 @@ mismo tema hay que volver a contar todo en otro TASK. Lo que el owner pidió es 
 una sesión de Windows pueda **conversar** con una de la Mac. "Abre la web del demo, saca captura",
 y luego "ahora corre los tests", y que la segunda frase sepa de qué hablaba la primera.
 
+## Pasos
+
+Los pasos son las partes siguientes: la Parte 1 (Playwright y pantalla), la Parte 3 (el puente: piezas, clave, uso y pruebas) y el §4 (Remote Control). La Parte 2 es solo la evaluación previa.
+
 ## Parte 1 — Ojos y manos en la Mac
 
 ### 1.1 Playwright MCP en el Claude Code de la Mac
@@ -29,7 +42,7 @@ aviso.
 # desde Windows, todo por tmux-run.sh (nace en la sesión gráfica: tiene pantalla y llavero)
 ssh mac 'npx -y @playwright/mcp@latest --version'                      # Version 0.0.83
 ssh mac 'bash ~/.enjambre/tmux-run.sh -- /bin/bash -lc "claude mcp add playwright -s user -- \
-  /opt/homebrew/bin/npx -y @playwright/mcp@0.0.83 --browser chromium --isolated \
+  /opt/homebrew/bin/npx -y @playwright/mcp@<versión fijada, 0.0.83> --browser chromium --isolated \
   --output-dir \$HOME/renders/playwright --viewport-size 1280x800; claude mcp list"'
 ```
 
@@ -50,7 +63,7 @@ Error: Browser "chrome-for-testing" is not installed; expected executable at
 ```
 
 Arreglo: instalar con el instalador **del propio MCP**, en la misma versión que quedó
-registrada: `npx -y @playwright/mcp@0.0.83 install-browser chrome-for-testing`.
+registrada: `npx -y @playwright/mcp@<versión fijada, 0.0.83> install-browser chrome-for-testing`.
 
 ### 1.2 Probarlo sin modelo
 
@@ -60,7 +73,7 @@ habla MCP directamente por stdio (initialize → tools/list → tools/call) desd
 
 ```sh
 ssh mac 'bash ~/.enjambre/tmux-run.sh -C ~/renders/playwright -- /usr/bin/python3 \
-  ~/.enjambre/mcp_probe.py --calls p16calls.json -- /opt/homebrew/bin/npx -y @playwright/mcp@0.0.83 …'
+  ~/.enjambre/mcp_probe.py --calls p16calls.json -- /opt/homebrew/bin/npx -y @playwright/mcp@<versión fijada, 0.0.83> …'
 scp mac:renders/playwright/p16-example.png state/renders/
 ```
 
@@ -304,6 +317,8 @@ así que cualquier intento de usarlos se deniega.
 
 ## 4. Remote Control (para seguir la sesión desde el celular)
 
+Pendiente: no se volvió a probar tras el login del 2026-10-08; el texto de abajo describe el estado anterior.
+
 En el CLI de la Mac (2.1.289) se activa con `--remote-control [nombre]`, al abrir una sesión
 **interactiva**:
 
@@ -334,8 +349,36 @@ cualquiera de las dos máquinas puede leerla. El límite real de seguridad es tu
 igual que con la llave ssh. Para cambiarla: borrar el archivo, volver a correr `install.sh` y
 copiarla otra vez al registro (§3.2).
 
+## Qué salió mal de verdad
+
+Ocho fallos reales, cada uno explicado donde ocurrió: n.º 1 versión de navegador de Playwright (§1.1);
+n.º 2 el probe MCP se colgaba por no contestar peticiones del servidor (§1.2); n.º 3 replay legítimo, resuelto
+con nonce (§3.4); n.º 4 50 s para arrancar por `getfqdn()` (§3.4); n.º 5 farmacias atrasado en la Mac
+(§3.4); n.º 6 reto anti-bot «Checking your browser» (§3.6); n.º 7 capturas en la raíz del repo (§3.6);
+n.º 8 acentos rotos en la ventana de Windows (§3.6). Además, el login caducado de la Mac bloqueó el modelo hasta el 2026-10-08 (§3.5).
+
+## Cómo verificar
+
+Salidas esperadas, todas ya obtenidas y copiadas arriba:
+
+- `claude mcp list` en la Mac: `playwright: … - ✔ Connected` (§1.1).
+- Probe MCP: `call browser_navigate: error=False`, `call browser_take_screenshot: error=False`, `call browser_close: error=False` (§1.2).
+- `screencapture` por `tmux-run.sh`: `rc=0` con un PNG de 1720×1440 (§1.3).
+- `python enjambre.py sessions mac`: la sesión persistente con sus turnos y su coste (en la prueba, `912f16e4`, 5 turnos).
+- `tests/test_puente.py`: 13 tests (§3.4).
+
+## Autoevaluación
+
+1. ¿Por qué el puente es un LaunchAgent y no un proceso en tmux?
+   Respuesta: tiene que nacer en la sesión gráfica, igual que el gestor de modelos, y launchd lo reinicia si muere (`KeepAlive`).
+2. ¿Qué pasa si cierras la ventana de Windows a mitad de un turno?
+   Respuesta: el turno sigue en la Mac; `enjambre collect` o `chat --attach` lo recogen y escriben una sola línea en el ledger, y otra ventana continúa la misma sesión.
+3. ¿Qué puede hacer quien tenga la clave y qué no?
+   Respuesta: mandar turnos a repos de Portfolio con AGENTS.md usando tu cuenta; no puede usar herramientas fuera de la allowlist, salir de Portfolio ni hacer push.
+
 ## 6. Pendiente
 
 - Nada del prompt 16. Login, captura real y prueba de fuego están hechos (§1.3, §3.6).
 - `watch` (el de ahora es anterior a F2) no recoge solo los turnos de `send`: hasta que lo
-  reinicies, usa `enjambre collect`.
+  reinicies, usa `enjambre collect`. Actualización (NEEDS-OWNER §22.5): `watch` se reinició el 2026-10-10, pero
+  la recogida automática de turnos de `send` sigue sin comprobarse con un turno real.

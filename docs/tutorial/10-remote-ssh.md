@@ -1,3 +1,10 @@
+---
+lesson:
+  route: build-stack
+  order: 11
+  level: 1
+---
+
 # 10 — Editar en Windows, ejecutar en la Mac (VS Code Remote-SSH)
 
 > **Pendiente: estos pasos están escritos pero no se han ejecutado** (necesitan la interfaz

@@ -1,4 +1,13 @@
+---
+lesson:
+  route: build-stack
+  order: 24
+  level: 3
+---
+
 # 25 — Trabajos largos en la Mac: lanzar, cerrar la ventana, volver con el resultado
+
+## Objetivo
 
 **Qué consigues:** dejar corriendo en la Mac un trabajo de horas (un script pesado o un agente
 `claude -p`) lanzado desde Windows. Se puede cerrar la ventana. El trabajo late, tiene un tope de
@@ -14,6 +23,10 @@ Antes, `enjambre run` esperaba con el ssh abierto hasta que el trabajo terminara
 escribía la línea del ledger. Si cerrabas la ventana, el trabajo podía seguir en tmux, pero nadie
 recogía su resultado. Además, un agente de horas no daba señales de avance, no tenía tope de
 gasto y, si moría, no había forma de continuarlo.
+
+## Pasos
+
+Los pasos son las secciones siguientes: las piezas, la lista blanca en el AGENTS.md y las pruebas (a), (c), (b) y `kind: tests`.
 
 ## Las piezas
 
@@ -179,10 +192,35 @@ tiene un tope de 120 s y un reintento.
 - **Plantillas** `AGENTS.md` y `DELEGAR.md`: sección `## enjambre`, `.venv/bin/python` o `python3`
   en la Mac, nunca `py`.
 
-## Tests
+## Qué salió mal de verdad
+
+Cuatro fallos reales, cada uno explicado donde ocurrió:
+
+1. **Se colgó en `opendir()`** (prueba a): un proceso nacido en tmux no puede tocar el disco externo
+   porque macOS pide permiso (TCC) en la pantalla. Arreglo: los `script` nacen desacoplados desde la sesión ssh.
+2. **Contaba doble** (prueba b): `stream-json` repite el `usage` en cada bloque de contenido. Arreglo: contar por id de mensaje.
+3. **El entorno** (`kind: tests`): sin `.venv` en la Mac y con `selectolax` 1.x. Arreglo: `selectolax<1.0` y `.venv` enlazado.
+4. **Traer la rama**: el `git fetch` quedó colgado unos 10 min. Arreglo: tope de 120 s y un reintento.
+
+Además, en (a) el `failed` final fue un falso negativo del script, no de enjambre (las 570 filas `eliminado-vacio`).
+
+## Cómo verificar
 
 - Windows: `python -m unittest discover -s tests` → 209 OK (32 nuevos en `test_largos.py`).
 - Mac: `/usr/bin/python3 -m unittest discover -s tests/node` → 14 OK, con HOME temporal y un
   `claude` falso que imprime `stream-json` (no gasta cuota). Cubre lanzar, latido, `busy.json`
   que no se roba, `kill` por grupo, muerto → reanudar, huérfano, presupuesto, `--resume` con el
   presupuesto restante, TASK por stdin y el `.venv` enlazado sin commitearlo.
+
+Prueba de extremo a extremo (ya hecha, con salida en este tutorial): `python enjambre.py collect <id>`
+sobre un trabajo matado devuelve `"state": "dead"`, y `python enjambre.py resume <id>` lo relanza con
+`"attempt": 2` reutilizando lo ya calculado (440,7 GB en la prueba c).
+
+## Autoevaluación
+
+1. ¿Por qué los `script` nacen desde la sesión ssh y los agentes en tmux?
+   Respuesta: en tmux un proceso que toca un disco externo se cuelga esperando el permiso de macOS (TCC) que nadie ve; los agentes sí necesitan el llavero, que está en la sesión gráfica.
+2. ¿Qué pasa si `status.json` dice `running` pero el pid del supervisor ya no existe?
+   Respuesta: `status` lo reporta como `dead` (se comprueba, no se cree) y `resume` lo relanza como intento 2.
+3. ¿Qué corta primero a un agente: el tope del CLI o la estimación del supervisor?
+   Respuesta: en la segunda prueba cortó el CLI (US$2,0036, `error_max_budget_usd`); la estimación del supervisor (US$1,85) quedó por debajo. El respaldo del supervisor corta si la estimación supera 1,15 × el tope.

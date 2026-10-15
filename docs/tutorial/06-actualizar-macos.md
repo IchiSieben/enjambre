@@ -1,3 +1,10 @@
+---
+lesson:
+  route: build-stack
+  order: 7
+  level: 0
+---
+
 # 06 — Actualizar macOS (y qué se rompe y qué no)
 
 ## Objetivo

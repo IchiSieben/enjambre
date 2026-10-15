@@ -1,3 +1,10 @@
+---
+lesson:
+  route: build-stack
+  order: 10
+  level: 2
+---
+
 # 09 — Un agente que trabaja solo toda la noche
 
 ## Objetivo
@@ -52,7 +59,7 @@ El prompt fija, por encima de cualquier otra instrucción (paráfrasis):
 - Ningún repo público nuevo ni cambio de visibilidad; los repos nuevos, solo privados y solo
   donde una fase lo pide.
 - No pushear: el kit público (`claude-kit`, retenido hasta probar en la Mac), el repo del sitio
-  web (su `main` se despliega solo), ni ningún repo cuya ruta contenga `confidencial` u `reservado`.
+  web (su `main` se despliega solo), ni ningún repo cuya ruta contenga una palabra restringida.
 - **gitleaks antes de cada push**; con un hallazgo, no se pushea y se anota.
 - No tocar procesos que el agente no lanzó; los trabajos largos remotos, dentro de `tmux`.
 - Si `ssh mac` falla: probar una vez un `ping` al nombre `.local` de la Mac para hallar la IP

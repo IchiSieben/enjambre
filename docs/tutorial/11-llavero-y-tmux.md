@@ -1,3 +1,10 @@
+---
+lesson:
+  route: build-stack
+  order: 12
+  level: 2
+---
+
 # 11 — El llavero por SSH: un tmux que nace en tu sesión
 
 ## Objetivo

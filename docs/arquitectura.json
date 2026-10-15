@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "slug": "enjambre",
+  "name": {"es": "enjambre", "en": "enjambre"},
+  "oneLiner": {
+    "es": "Un PC manda tareas de código a una Mac y recoge ramas de git: contrato, enrutado sin modelo, trabajos que sobreviven al cierre de la ventana, ledger y visor.",
+    "en": "A PC sends coding tasks to a Mac and gets git branches back: contract, model-free routing, jobs that outlive the window, ledger and visor."
+  },
+  "machines": ["PC Windows", "Mac mini", "GitHub", "Hostinger", "Navegador del usuario"],
+  "containers": 17,
+  "calls": 20,
+  "flows": 4,
+  "views": ["c4", "flows", "data", "deploy", "decisions"],
+  "hasCore": false,
+  "updated": "2026-10-15",
+  "status": "done",
+  "landing": {"projectSlug": "enjambre", "order": 90}
+}

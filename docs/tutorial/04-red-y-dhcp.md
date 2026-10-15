@@ -1,3 +1,10 @@
+---
+lesson:
+  route: build-stack
+  order: 5
+  level: 1
+---
+
 # 04 — Red: misma subred y una IP que no cambie
 
 ## Objetivo

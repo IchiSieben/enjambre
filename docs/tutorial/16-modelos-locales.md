@@ -1,10 +1,21 @@
+---
+lesson:
+  route: build-stack
+  order: 15
+  level: 2
+---
+
 # 16 — Modelos locales en la Mac: elegir, bajar, servir
 
-**Objetivo:** cinco modelos locales (transcripción, hablantes, texto/código, visión, imagen)
+## Objetivo
+
+Cinco modelos locales (transcripción, hablantes, texto/código, visión, imagen)
 en la Mac de 16 GB, bajados con sha256 verificado, servidos de a uno por un gestor que Windows
 usa por túnel SSH.
 
-**Por qué:** en la Mac la memoria es **unificada**: lo que la GPU reserva lo pierde todo lo demás.
+## Por qué
+
+En la Mac la memoria es **unificada**: lo que la GPU reserva lo pierde todo lo demás.
 Con 16 GB no caben dos modelos grandes a la vez, así que el diseño gira en torno a una regla:
 **un modelo pesado a la vez, y se descarga al terminar**. La forma más segura de descargar un
 modelo es que el proceso que lo cargó termine.
@@ -27,7 +38,7 @@ borró nada): `modelos-mac/docs/DISCO.md`.
 ### 2. Herramientas (sin sudo)
 
 ```
-mac$ brew install uv ffmpeg python@3.12
+mac$ brew install uv ffmpeg python@<versión>
 mac$ uv --version; ffmpeg -version | head -1; python3.12 --version
 uv 0.12.23 (Homebrew 2026-10-03 aarch64-apple-darwin)
 ffmpeg version 9.0.2

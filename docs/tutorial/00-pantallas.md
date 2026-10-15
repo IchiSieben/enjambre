@@ -1,3 +1,10 @@
+---
+lesson:
+  route: build-stack
+  order: 1
+  level: 0
+---
+
 # 00 — Pantallas: un monitor ultrawide partido entre Windows y la Mac
 
 ## Objetivo

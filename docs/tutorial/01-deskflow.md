@@ -1,3 +1,10 @@
+---
+lesson:
+  route: build-stack
+  order: 2
+  level: 0
+---
+
 # 01 — Un teclado y un mouse para las dos máquinas (Deskflow)
 
 ## Objetivo

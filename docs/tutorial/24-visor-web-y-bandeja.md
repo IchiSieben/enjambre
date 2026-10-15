@@ -1,20 +1,30 @@
+---
+lesson:
+  route: build-stack
+  order: 23
+  level: 3
+---
+
 # 24 — Visor v3, copia web y bandeja de tareas
 
-**Qué consigues:** un visor local con dos costos siempre a la vista y un historial que no se borra;
-una copia web redactada del visor y una bandeja para dejar tareas desde el celular, las dos
-**preparadas y probadas en local, sin desplegar**.
-**Quién lo hace:** Claude Code (2026-10-07). Tú, nada hasta los pasos de
-NEEDS-OWNER §19: crear el subdominio, la contraseña y las claves.
+## Objetivo
+
+Un visor local con dos costos siempre a la vista y un historial que no se borra; una copia web
+redactada del visor y una bandeja para dejar tareas desde el celular. Las dos se probaron
+primero en local y se desplegaron el 2026-10-07 (sección E).
+
+**Quién lo hace:** Claude Code (2026-10-07). Tú: la prueba desde el celular
+(NEEDS-OWNER §19, punto 2).
 
 **Estado, para no confundir lo medido con lo supuesto:**
 
 | Parte | Estado |
 |---|---|
 | Visor v2/v3 local | hecho y en uso en `win` |
-| Copia web (`visor.ichisieben.dev`) | construida y probada contra PHP local; **no desplegada** |
-| Bandeja | construida y probada de punta a punta en local con la Mac real; **no desplegada** |
+| Copia web (`visor.ichisieben.dev`) | construida y probada contra PHP local; **desplegada el 2026-10-07** (sección E) |
+| Bandeja | probada de punta a punta en local con la Mac real; **desplegada el 2026-10-07**, ronda de bandeja `ok`; falta la prueba desde el celular |
 
-## Por qué así: tirar, redactar con lista de permitidos, firmar
+## Por qué: tirar, redactar con lista de permitidos, firmar
 
 Tres ideas, una por parte:
 
@@ -24,6 +34,10 @@ Tres ideas, una por parte:
   que se copió campo a campo". Ficha: [Permitidos vs prohibidos](../conceptos/permitidos-vs-prohibidos.md).
 - **Firma sobre el propósito.** Cada petición lleva un HMAC que solo vale para un endpoint. Diseño
   completo de la bandeja: [BANDEJA.md](../BANDEJA.md); aquí no se repite.
+
+## Pasos
+
+Las secciones A) a E) son los pasos, en el orden en que se hicieron.
 
 ## A) Visor v2/v3 (local)
 
@@ -97,9 +111,10 @@ para no heredar la sesión del propio `watch`.
 
 *(captura del entorno real: no se publica; ver docs/CAPTURAS.md para las del modo demo)*
 
-## B) Copia web en `visor.ichisieben.dev` (preparada, no desplegada)
+## B) Copia web en `visor.ichisieben.dev` (construida en local; desplegada en E)
 
-Espera el OK del owner en cada paso. Hoy no hay nada en Hostinger.
+Se construyó y se probó en local antes de subir nada. El despliegue se hizo el 2026-10-07 con el
+OK explícito del owner (sección E).
 
 ### Dos muros contra las fugas
 
@@ -107,7 +122,7 @@ Espera el OK del owner en cada paso. Hoy no hay nada en Hostinger.
    no está escrito ahí no sale.
    - Nombres de proyecto → alias estables `proyecto-xxxxx`, por HMAC con una sal aleatoria local.
    - Discos → `disco-N`; montajes → `recurso-N`; tmux, solo un conteo.
-2. **`leak_check`**: segundo muro que **bloquea la subida** si encuentra palabras `confidencial`/`reservado`,
+2. **`leak_check`**: segundo muro que **bloquea la subida** si encuentra palabras restringidas,
    cadenas con forma de ruta, IPv4, o nombres privados (los de `ssh -G` y el usuario local).
 
 ### Subida y acceso
@@ -141,7 +156,7 @@ Resumen del recorrido; las tablas del contrato, las firmas y los estados están 
    - `kind` que exista también en `routing.toml`;
    - lista de workers;
    - regex de rutas, sin `..`;
-   - `confidencial`/`reservado` estructural en rutas, y con límite de palabra en texto libre (así "análisis"
+   - las palabras restringidas, de forma estructural en rutas, y con límite de palabra en texto libre (así "análisis"
      pasa);
    - límite diario por día de Lima.
 5. Escribe `TASK-<id>.md` y encola en enjambre. **Nunca un shell**: el único argv es
@@ -168,7 +183,7 @@ Formulario → PC → Mac con el worker `stub-ok` ($0) → estado **"hecha"**. R
 
 *(captura del entorno real: no se publica; ver docs/CAPTURAS.md para las del modo demo)*
 
-## Lo que falló
+## Qué salió mal de verdad (lo que falló)
 
 1. **El antivirus borró el router de prueba.** El `php -S` de pruebas usaba un script router que
    hacía `require` de una ruta derivada de la petición; el antivirus lo tomó por una webshell, lo
@@ -276,7 +291,7 @@ Resultado medido: 44 mediciones en la Mac; la copia web pasa el muro y pesa 136 
 | Quién | Qué tiene | Puede | No puede |
 |---|---|---|---|
 | Alguien con solo la URL | Nada | Ver un aviso de login; `robots` y `noindex` lo mantienen fuera de buscadores | Leer datos ni tareas |
-| Quien tiene la contraseña Basic | Acceso a la web | Leer la instantánea redactada (alias, conteos, costos; sin rutas, nombres ni IP). Crear tareas, pero solo contratos de repos, kinds y workers listados, con el tope diario de la PC, con herramientas restringidas, en una rama y **sin fusión automática** | Ejecutar comandos de shell, tocar rutas `confidencial`/`reservado`, llegar a la red de casa |
+| Quien tiene la contraseña Basic | Acceso a la web | Leer la instantánea redactada (alias, conteos, costos; sin rutas, nombres ni IP). Crear tareas, pero solo contratos de repos, kinds y workers listados, con el tope diario de la PC, con herramientas restringidas, en una rama y **sin fusión automática** | Ejecutar comandos de shell, tocar rutas de repos restringidos, llegar a la red de casa |
 | Quien tiene el token de la bandeja (clave HMAC) | La clave de `bandeja_key` | Falsificar tareas con firma válida; marcar estados de tareas | Salirse de las listas cerradas ni del límite diario de la PC; saltarse `worker.sh`. Mitigación: rotar la clave en `config.php` y en la variable de entorno de Windows |
 | Quien tiene la clave de subida | La clave de `ingest_key` | Sobrescribir la instantánea mostrada (desinformación) | Crear tareas: hay una clave distinta por propósito |
 | Quien compromete la cuenta de Hostinger | Todo lo anterior | Todo lo anterior | Entrar a casa: la PC solo pregunta, nada escucha en la red de casa |
@@ -352,6 +367,9 @@ paso sale mal, lo que queda expuesto es una página que no responde, no un visor
    `bandeja.py --once` → `{"bandeja": "ok", ...}` y la página de la bandeja ya muestra la lista
    permitida (`enjambre-sandbox`, `stub-ok`).
 
+Nota posterior: la carpeta privada se movió a `domains/ichisieben.dev/private/visor`, fuera de
+`public_html`, porque un deploy del Landing borraría `public_html/visor-private` (DECISIONES 224).
+
 **Lo que falló:**
 - El manifest daba **401**: un `FilesMatch` con `Require all granted` dentro del `.htaccess` raíz
   no le gana a `Require valid-user` en LiteSpeed. Se movió a `pwa/` con su propio `.htaccess`
@@ -371,4 +389,34 @@ paso sale mal, lo que queda expuesto es una página que no responde, no un visor
 
 ## F) Pendiente del owner
 
-Reiniciar `watch` y la prueba desde el celular: NEEDS-OWNER §19.
+El reinicio de `watch` está hecho (2026-10-10, pid 46420). Falta la prueba desde el celular:
+NEEDS-OWNER §19, punto 2.
+
+## Cómo verificar
+
+```
+PS> python tools/web/build_dist.py
+```
+
+Salida esperada: `state/web-dist/visor-app` y `visor-app.zip`, 9 archivos, con `index.html` sin datos.
+
+Con el visor desplegado, la matriz sin credenciales de la sección E debe dar:
+
+```text
+https://visor.ichisieben.dev/                       401
+https://visor.ichisieben.dev/data.php               401
+https://visor.ichisieben.dev/lib.inc.php            403
+https://visor.ichisieben.dev/api/tareas.php         503   (antes de poner config.php)
+```
+
+Con contraseña, `/` da 200 y `data.php` da 200. Prueba firmada: `build.py` imprime `web: ok <bytes> B` y `bandeja.py --once` imprime `{"bandeja": "ok", ...}`.
+
+## Autoevaluación
+
+1. ¿Por qué la copia web usa lista de permitidos y no una lista de prohibidos?
+   Respuesta: lo que sale a internet es solo lo que se copió campo a campo; lo que no está escrito no sale. `leak_check` es un segundo muro que bloquea la subida.
+2. ¿Por qué la PC verifica la firma antes de parsear y vuelve a aplicar todas las reglas?
+   Respuesta: la firma prueba que la tarea la escribió el PHP que tiene la clave, no que la escribiste tú; por eso las reglas de verdad corren en la PC.
+3. ¿Por qué se suben los archivos uno por uno y no por zip?
+   Respuesta: el deploy por zip de la API reemplaza el sitio padre, que aquí es el Landing.
+

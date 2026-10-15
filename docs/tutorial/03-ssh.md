@@ -1,3 +1,10 @@
+---
+lesson:
+  route: build-stack
+  order: 4
+  level: 2
+---
+
 # 03 — SSH con llave (y sin contraseña)
 
 ## Objetivo

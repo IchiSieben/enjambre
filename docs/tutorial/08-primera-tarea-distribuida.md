@@ -1,3 +1,10 @@
+---
+lesson:
+  route: build-stack
+  order: 9
+  level: 2
+---
+
 # 08 — Primera tarea distribuida: Windows manda, la Mac hace
 
 ## Objetivo
@@ -38,7 +45,7 @@ El viaje de ida y vuelta:
  ──────────────────                                   ─────────────
  enjambre.py run --node mac --task TASK-x.md
    1. valida el contrato (TASK + AGENTS.md)
-      y la regla confidencial/reservado  ── si falla: exit 3,
+      y la regla de repos restringidos ── si falla: exit 3,
                               no se toca la red
    2. scp worker.sh  ───────────────────────────────▶ ~/.enjambre/worker.sh
    3. ssh mac bash worker.sh < TASK-x.md ───────────▶ 4. git worktree add ../wt/<repo>-x -b mac/x
@@ -103,7 +110,7 @@ Sin la Mac, las pruebas de la pieza de Windows:
 PS> python -m unittest discover -s tests -v     → 12 tests OK
 ```
 
-Cubren el contrato (nombre del archivo, secciones, `AGENTS.md`), la regla de rechazo `confidencial/reservado`
+Cubren el contrato (nombre del archivo, secciones, `AGENTS.md`), la regla de rechazo de repos restringidos
 para workers externos (incluido que `run` sale con 3 **sin** tocar la red) y que el ledger es
 solo-agregar, con saltos de línea LF también en Windows.
 

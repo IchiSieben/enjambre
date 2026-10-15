@@ -1,14 +1,29 @@
+---
+lesson:
+  route: build-stack
+  order: 30
+  level: 2
+---
+
 # 31 — Pulido del visor: qué es «ahora», qué es ventana
 
-**Objetivo:** que cada número del visor diga de cuándo es y de dónde sale, y que ninguna captura
+## Objetivo
+
+Que cada número del visor diga de cuándo es y de dónde sale, y que ninguna captura
 enseñe el nombre de usuario.
 
-**Por qué:** un gauge sin hora parece «ahora» aunque la lectura tenga 7 minutos (el ssh falló y se
+## Por qué
+
+Un gauge sin hora parece «ahora» aunque la lectura tenga 7 minutos (el ssh falló y se
 muestra la última buena). Una curva sin ventana no dice si son 15 minutos o 4 horas. Y un contador
 que no suma lo mismo que las tarjetas de debajo hace dudar de todo lo demás. Es la diferencia
 entre **dato** y **metadato**: el número solo sirve si viaja con su hora y su origen.
 
 Sigue a [28 — Telemetría](28-telemetria.md) y [29 — Prioridades](29-prioridades.md).
+
+## Pasos
+
+Las secciones 1 a 3 son los pasos: claridad temporal, tres cosas que no cuadraban y privacidad de las rutas.
 
 ## 1. Claridad temporal
 
@@ -100,7 +115,7 @@ ruta para el control de fugas.
 
 *(captura del entorno real: no se publica; ver docs/CAPTURAS.md para las del modo demo)*
 
-## 4. Comprobar
+## Cómo verificar (4. Comprobar)
 
 ```
 PS> python -m pytest -q tests/test_visor_pulido.py
@@ -119,3 +134,19 @@ hora de la lectura de procesos (`lista de procesos`); la línea exacta del ledge
   al mostrarlo. La copia web ya publica los proyectos solo por alias.
 - En el detalle del PC, el gauge térmico dice «(sin sudo)», que es la razón de la Mac, no la del
   PC. Viene de antes; no se tocó.
+
+## Qué salió mal de verdad
+
+- La cabecera no sumaba los renders del lab ni los procesos adoptados (§2.1).
+- Un externo del lab mostraba «Última señal hace —» porque no tiene latido propio (§2.2).
+- `parse_netstat` leía columnas desplazadas en interfaces sin dirección (`gif0`, el `utun` de una VPN); ya tiene test (§2.3).
+- La tabla de Atención mostraba el nombre de usuario en una ruta completa (§3).
+
+## Autoevaluación
+
+1. ¿Desde qué campo se calcula el «hace N s» de un gauge?
+   Respuesta: de `telemetria.at`, la hora de la medición, no la de `live.json`.
+2. ¿De dónde sale la señal y el progreso de un render del lab?
+   Respuesta: la señal es la respuesta de `GET /jobs`; el progreso, de la línea del log `logs/lab_jobs/<id>.log`.
+3. ¿Por qué se aplica `home_paths` también al mostrar las filas viejas del ledger?
+   Respuesta: porque el ledger ya escrito no se reescribe.

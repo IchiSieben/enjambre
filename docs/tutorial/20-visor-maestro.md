@@ -1,10 +1,21 @@
+---
+lesson:
+  route: build-stack
+  order: 19
+  level: 2
+---
+
 # 20 — Visor maestro: una pantalla para todo el enjambre
 
-**Objetivo:** ver en una sola página qué corre en cada máquina, cuánto consume y dónde rinde
+## Objetivo
+
+Ver en una sola página qué corre en cada máquina, cuánto consume y dónde rinde
 mejor cada tipo de tarea. Y tener lo esencial siempre a la vista en la barra de estado de
 Claude Code.
 
-**Por qué:** con dos máquinas (y pronto cuatro), "¿está todo bien?" se volvió una ronda de
+## Por qué
+
+Con dos máquinas (y pronto cuatro), "¿está todo bien?" se volvió una ronda de
 `ssh`, `tail` y `ls`. Eso es [observabilidad](../conceptos/observabilidad.md) hecha a mano. La
 regla de este paso es **no inventar métricas**: primero se inventaría lo que los registros traen
 de verdad, y lo que no traen se muestra como "no medido".

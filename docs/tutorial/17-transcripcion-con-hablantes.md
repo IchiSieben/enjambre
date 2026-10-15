@@ -1,9 +1,20 @@
+---
+lesson:
+  route: build-stack
+  order: 16
+  level: 2
+---
+
 # 17 — Transcripción con hablantes: medir antes de creer
 
-**Objetivo:** audio → texto con marcas de tiempo y "Hablante 1, 2…" → renombrar una vez y que
+## Objetivo
+
+Audio → texto con marcas de tiempo y "Hablante 1, 2…" → renombrar una vez y que
 el nombre se propague a SRT, VTT y TXT. Medido en audios de 5, 20 y 60 min.
 
-**Por qué:** transcribir ya es fácil; saber **quién** habló es lo difícil (*diarización*). Son
+## Por qué
+
+Transcribir ya es fácil; saber **quién** habló es lo difícil (*diarización*). Son
 dos modelos distintos: Whisper escucha palabras, el diarizador agrupa trozos de voz por
 parecido. El pipeline los cruza por tiempo. Y un número de error solo vale si sabes qué
 respuesta era la correcta: por eso se mide con audio cuya verdad conoces.
@@ -189,6 +200,19 @@ El instalador es idempotente; `--uninstall` lo quita.
    `server/` a `~/modelos/app`, fuera de `~/Documents`, y el agente corre esa copia. Así no hay
    que darle a Python acceso a todos tus documentos. Coste: después de cambiar el código hay
    que volver a correr el instalador.
+
+## Cómo verificar
+
+```
+mac$ lsof -nP -iTCP:8765 -sTCP:LISTEN
+Python  94703 <usuario>  7u  IPv4  TCP 127.0.0.1:8765 (LISTEN)
+mac$ ~/modelos/envs/main/bin/python scripts/bench_speakers.py ~/modelos/audios/real-{05,20,60}.wav
+```
+
+Esperado (tabla del paso 4): audio de 5,2 min en unos 18 s, 2 hablantes hallados, DER 5,3 %,
+WER 0,6 %; el de 60,1 min, 4 hablantes hallados, DER 8,8 %, cerca de 24 horas de audio por hora.
+El gestor responde en `127.0.0.1:8765` y sigue vivo tras matar su proceso (vuelve a los ~21 s).
+Los tiempos son techo, no promedio (ver Límites).
 
 ## Límites (léelos antes de vender esto)
 

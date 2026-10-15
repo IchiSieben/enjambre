@@ -10,12 +10,14 @@ Esta página no edita el Landing. La sesión del Landing importa los dos bloques
 | Segmento | `agentes-ia` | verificado en `SEGMENTS` de `config.ts` |
 | Estado | `live` + `statusNote: "Open source · usable"` (el texto pedido va en `statusNote`, que el esquema sí tiene) | verificado en `config.ts` |
 | Madurez | `usable` | verificado en el esquema |
-| `repoUrl` | https://github.com/IchiSieben/enjambre | decidido por el owner (2026-10-11) |
-| `demoUrl` | https://enjambre.ichisieben.dev | decidido por el owner (2026-10-11); demo estática (`visor --demo --export`), se sube después del primer push |
+| `repoUrl` | https://github.com/IchiSieben/enjambre | **público** desde el 2026-10-15; CI (auditoría + tests) en verde |
+| `demoUrl` | https://enjambre.ichisieben.dev | **en línea** desde el 2026-10-15: demo estática (`visor --demo --export`), docroot propio `enjambre-app`, matriz 6/6 |
+| Familia | `family: "claude-code-ecosystem"`, `siblings: ["claude-kit", "cert-studio"]`, `academyRoute: "build-stack"` | campos nuevos del hub Ecosistema (§0 del prompt del ecosistema); si el esquema aún no los tiene, la sesión del Landing los añade como opcionales |
+| Arquitectura | `docs/arquitectura.{html,json}` (slug `enjambre`, motor ArqViva) | la importa `tools/import-arquitecturas.py` |
 | Habilidades | `python`, `bash`, `git`, `llm-agentes`, `macos-arm`, `windows`, `sqlite` | los siete slugs existen en `Landing/src/content/skills/` |
-| Portada | `/media/enjambre/poster.webp` (+ `poster-mobile.webp`, `preview.mp4`) | derivadas de `docs/img/visor-demo.png` y `visor-demo.mp4`; ver `CAPTURAS.md` |
+| Portada | `/media/enjambre/poster.webp` (+ `poster-mobile.webp`, `preview.webm`, `preview.mp4`) | grabadas en la Mac desde la demo pública, estándar v9 (1280x720, AV1 + H.264 ≤ 1,5 MB, póster = fotograma 0): `docs/media/` de este repo |
 
-Antes de importar: copiar los tres archivos a `Landing/public/media/enjambre/`. El esquema falla
+Antes de importar: copiar los archivos de `docs/media/` a `Landing/public/media/enjambre/`. El esquema falla
 el build si `media` apunta a un archivo que no existe. Si todavía no están, importar sin el bloque
 `media`.
 
@@ -40,12 +42,15 @@ maturity: "usable"
 statusNote: "Open source · usable"
 published: true
 since: 2026
-date: "2026-10-11"
+date: "2026-10-15"
 summary: "Programación con agentes repartida en hardware propio: una PC con Windows orquesta y una Mac mini ejecuta trabajos de Claude Code sin interfaz, cada uno en su worktree de git. Cada trabajo vuelve como una rama revisable y una línea en un registro de solo añadir, y un visor local muestra nodos, trabajos y telemetría."
 oneLine: "Reparto trabajos de Claude Code entre mi PC y una Mac mini; cada uno vuelve como una rama que reviso, con un visor en vivo de las máquinas."
 techLine: "Python · Bash · SSH · git worktrees · tmux · Claude Code"
 repoUrl: "https://github.com/IchiSieben/enjambre"
 demoUrl: "https://enjambre.ichisieben.dev"
+family: "claude-code-ecosystem"
+siblings: ["claude-kit", "cert-studio"]
+academyRoute: "build-stack"
 skills:
   - "python"
   - "bash"
@@ -107,12 +112,15 @@ maturity: "usable"
 statusNote: "Open source · usable"
 published: true
 since: 2026
-date: "2026-10-11"
+date: "2026-10-15"
 summary: "Agentic coding spread across hardware I own: a Windows PC orchestrates and a Mac mini runs Claude Code jobs headless, each in its own git worktree. Every job comes back as a reviewable branch and one line in an append-only ledger, and a local visor shows nodes, jobs and telemetry."
 oneLine: "I spread Claude Code jobs across my PC and a Mac mini; each one returns as a branch I review, with a live dashboard of the machines."
 techLine: "Python · Bash · SSH · git worktrees · tmux · Claude Code"
 repoUrl: "https://github.com/IchiSieben/enjambre"
 demoUrl: "https://enjambre.ichisieben.dev"
+family: "claude-code-ecosystem"
+siblings: ["claude-kit", "cert-studio"]
+academyRoute: "build-stack"
 skills:
   - "python"
   - "bash"

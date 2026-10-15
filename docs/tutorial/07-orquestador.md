@@ -1,3 +1,10 @@
+---
+lesson:
+  route: build-stack
+  order: 8
+  level: 2
+---
+
 # 07 — El kit de configuración en la Mac: repos, port y config en capas
 
 ## Objetivo

@@ -1,3 +1,10 @@
+---
+lesson:
+  route: build-stack
+  order: 6
+  level: 2
+---
+
 # 05 — Respaldo verificado: liberar la Mac sin perder una sola foto
 
 ## Objetivo
@@ -237,11 +244,34 @@ foto.
 Se da por bueno cuando el log `F:\Backup-Mac-espejo.log` termina en
 `WINDOWS VERIFY: ok ... mismatches 0, missing 0`.
 
+## Qué salió mal de verdad
+
+1. **Copia y Papelera peleando por el mismo disco USB.** La copia cayó a ~6 MB/s. Arreglo: pausar
+   la Papelera con `kill -STOP <pid>` y reanudarla con `kill -CONT <pid>` cuando la copia escribió
+   `EXIT=0` (paso 4).
+2. **Tres niveles de comillas perdieron el `$?`.** Con todo el comando entre comillas dentro de
+   `tmux new "..."`, el log quedaba con `EXIT=\0` literal. Arreglo: un script de 8 líneas
+   (`pasada2.sh`) en vez de una línea con comillas anidadas.
+3. **La Papelera se vació a mano a mitad de la segunda pasada.** Los scripts nunca la vacían; el
+   dueño lo hizo, y desde entonces no hay "Devolver". No se perdió nada porque cada archivo se
+   verificó dos veces contra el externo antes de moverse, pero hasta tener la tercera copia el
+   externo era la única.
+
 ## Cómo verificar
 
 ```bash
 ssh mac 'python3 ~/.enjambre/respaldo/respaldo.py report'
 ```
+
+La tercera copia se da por buena con la última línea de verificación del espejo en Windows
+(`F:\Backup-Mac-espejo.log`), que quedó así:
+
+```
+WINDOWS VERIFY: ok 9858 (222.44 GB), mismatches 0, missing 0
+```
+
+Pendiente: la captura de `report` (queda por tomar) y liberar espacio en la Mac hasta superar 150 GB
+libres (`NEEDS-OWNER.md` §3).
 
 ## Autoevaluación
 
