@@ -1,0 +1,12 @@
+chromium 148.0.7778.96 · headless=false · darwin
+scrollable height 6119
+click telemetry mac
+click telemetry pc
+click telemetry pc again (closes it if it toggles)
+frames=2414 sustained motion=24.48 s delivered=110.8 fps -> output 60
+intermediate 25.40 s @ 60 fps
+loop seam SSIM(last, first) = 0.99994
+webm libsvtav1 crf 36: 1247205 B; mp4 x264 crf 27: 1432355 B
+colour preview.webm: tv,bt709,iec61966-2-1,bt709 (want tv,bt709,iec61966-2-1,bt709)
+colour preview.mp4: tv,bt709,iec61966-2-1,bt709 (want tv,bt709,iec61966-2-1,bt709)
+poster encoder: chromium canvas.toBlob(image/webp)

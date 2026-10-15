@@ -1,0 +1,20 @@
+browser check of https://enjambre.ichisieben.dev/ · 2026-10-15T09:35:12.325Z · chromium 148.0.7778.96
+[desktop] INTERSTITIAL (not a demo failure): status 403, title "Checking your browser before accessing. Just a moment...", waiting 6 s (attempt 1/8)
+[desktop] interstitial cleared after 1 retries
+[desktop] viewport 1280x720 · counted load status 200 (first open 200) · observed 18 s
+[desktop] console errors: 0
+[desktop] 4xx/5xx responses: 0
+[desktop] failed requests: 0
+[desktop] scrollWidth 1265 / innerWidth 1280
+[desktop] chip: present=true visible=true text="demo · datos sintéticos"
+[mobile] INTERSTITIAL (not a demo failure): status 403, title "Checking your browser before accessing. Just a moment...", waiting 6 s (attempt 1/8)
+[mobile] interstitial cleared after 1 retries
+[mobile] viewport 390x844 · counted load status 200 (first open 200) · observed 12 s
+[mobile] console errors: 0
+[mobile] 4xx/5xx responses: 0
+[mobile] failed requests: 0
+[mobile] scrollWidth 390 / innerWidth 390
+[mobile] chip: present=true visible=true text="demo · datos sintéticos"
+RESULT browser check: desktop PASS · mobile PASS
+[rec] INTERSTITIAL (not a demo failure): status 403, title "Checking your browser before accessing. Just a moment...", waiting 6 s (attempt 1/8)
+[rec] interstitial cleared after 1 retries

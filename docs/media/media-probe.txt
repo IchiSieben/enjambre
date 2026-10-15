@@ -1,0 +1,4 @@
+preview.webm  bytes=1247205  duration=25.400000  stream=av1,1280,720,yuv420p,tv,bt709,iec61966-2-1,bt709,60/1
+preview.mp4  bytes=1432355  duration=25.400000  stream=h264,1280,720,yuv420p,tv,bt709,iec61966-2-1,bt709,60/1
+poster.webp  bytes=45672  dims=1280x720
+poster-mobile.webp  bytes=19280  dims=720x405

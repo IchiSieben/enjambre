@@ -8,3 +8,8 @@
 2ef9dea0aa693fd8b0a103933c0d2aaac5a958e4ca3c50076354a15659150a80  docs/img/visor-nodos.png
 2ee546b2923a0a52a729ef57492622a9a04aca16e893ed23d970e8445eb3ea4c  docs/img/visor-telemetria.png
 f4d924427a8244337c901111938267bd4923437e0391d6b1bf3039df5c34fefd  docs/img/visor-trabajos.png
+# card media of the public demo (tools/mac/media_demo.mjs on the Mac, 2026-10-15), poster + mid-frame reviewed
+b3e7633e5f46097d6e69e8b7ec2fa6356170a386fb378681c7a3a584b2d52326  docs/media/poster.webp
+3f30b6adcf53860da6decde97a66ea169a9041fcaf0c1ef275b29dee1e1073a8  docs/media/poster-mobile.webp
+7f611171d13d368a14e076e8d6e817eb8d6b0c1b2813371a38fc415b7cc8b1fc  docs/media/preview.mp4
+90689f207d3d200934edb9efcad48be5628654ce154c945f7387203d27cd89c8  docs/media/preview.webm

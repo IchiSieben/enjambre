@@ -25,8 +25,20 @@ dirección que no sea del demo.
 | `docs/img/visor-telemetria.png` | Gráficas de las últimas 4 horas por nodo y procesos etiquetados con su trabajo | Documentación del visor |
 | `docs/img/visor-demo.mp4` | Video de 15 a 30 s: recorrido de nodos, un trabajo que cambia de estado y las gráficas moviéndose (usa `--serve`) | Ficha del Landing (`preview.mp4`) |
 
-Derivados para el Landing, a partir de los anteriores: `poster.webp` (1440 de ancho),
-`poster-mobile.webp` (720 de ancho) y `preview.mp4`, copiados a `Landing/public/media/enjambre/`.
+Medios de la tarjeta del Landing, en `docs/media/`: se grabaron el 2026-10-15 en la Mac desde la
+demo pública (https://enjambre.ichisieben.dev), nunca desde el visor real, con
+`tools/mac/media_demo.mjs`. Usan CDP screencast con marcas de tiempo reales.
+
+| Archivo | Formato |
+|---|---|
+| `preview.webm` | AV1, 1280x720 a 60 fps, 25,4 s, 1,25 MB |
+| `preview.mp4` | H.264, 1280x720 a 60 fps, 1,43 MB |
+| `poster.webp` | fotograma 0, 46 KB |
+| `poster-mobile.webp` | 720 de ancho |
+
+Junto a ellos están las pruebas: `browser-check.txt` (0 errores de consola, 0 respuestas 4xx y
+sin scroll horizontal a 390 px), `media-probe.txt` (ffprobe), `clip.json` y `record-log.txt`. Se
+copian tal cual a `Landing/public/media/enjambre/`.
 
 ## Diagramas existentes
 
