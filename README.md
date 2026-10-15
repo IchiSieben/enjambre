@@ -86,6 +86,14 @@ python tools/publicar/auditar.py          # la auditoría de publicación (requi
 código del visor real (recolector, constructor de la página, ensamblado en vivo); solo los datos
 son sintéticos y repetibles.
 
+Un repo nuevo en un nodo se clona una vez, sin agente: `python enjambre.py clone --node <nodo> <repo>`
+(idempotente: responde `cloned` o `exists`, usa el `origin` del clon local o `--url`, y deja una línea
+`worker: clone` en el registro). `--repo` es siempre el **nombre** de la carpeta bajo `<portfolio>/`,
+nunca una ruta; la rama de partida se elige con `--ref <rama>`. Antes de lanzar, `run` comprueba por
+ssh que `<portfolio>/<repo>/.git` existe en el nodo y, si no, falla en el acto con el comando `clone`
+que lo arregla. Si un trabajo muere antes de arrancar, `status` lo muestra como `dead-at-launch` con
+la razón, y `python enjambre.py logs <id>` trae los registros del lado del nodo.
+
 ## Qué mide y qué produce
 
 Cada trabajo deja una rama y una línea de ledger. El visor suma el consumo en dos costos

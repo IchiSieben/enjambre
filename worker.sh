@@ -30,6 +30,24 @@ wt="$base/wt/$repo-$id"
 branch="mac/$id"
 logdir="$HOME/.enjambre/jobs/$id"
 mkdir -p "$logdir"
+# WHY first: a worker that dies before its job leaves a state on disk and a log line, never
+# nothing (2026-10-15: three jobs read `unknown` forever). The EXIT trap turns any exit that did
+# not reach the end into `failed` with the reason and rc; stderr is copied into worker.log.
+printf '{"task_id":"%s","state":"starting","node":"%s"}\n' "$id" "$node" > "$logdir/status.json"
+printf '%s starting worker %s on %s (repo %s)\n' "$(date +%Y-%m-%dT%H:%M:%S%z)" "$id" "$node" "$repo" > "$logdir/worker.log"
+exec 2> >(tee -a "$logdir/worker.log" >&2)
+why=''
+finished=''
+on_exit() {
+  rc=$?
+  [ -n "$finished" ] && return
+  [ -n "$why" ] || why="worker exited (rc $rc) before the job finished"
+  why=$(printf '%s' "$why" | tr -d '"\\' | head -c 200)
+  printf '{"task_id":"%s","state":"failed","rc":%s,"reason":"%s"}\n' "$id" "$rc" "$why" > "$logdir/status.json"
+  printf '%s failed rc=%s: %s\n' "$(date +%Y-%m-%dT%H:%M:%S%z)" "$rc" "$why" >> "$logdir/worker.log"
+}
+trap on_exit EXIT
+refuse() { why=$1; printf '{"task_id":"%s","exit":2,"error":"%s"}\n' "$id" "$1"; exit 2; }
 cat > "$logdir/TASK.md"
 
 say() { printf '[worker %s] %s\n' "$id" "$*" >&2; }
@@ -38,7 +56,7 @@ json_str() { # minimal JSON string escaper (bash 3.2: no ${var//} on newlines is
 }
 
 start=$(date +%s)
-cd "$src" || { echo "{\"task_id\":\"$id\",\"exit\":2,\"error\":\"no repo $repo\"}"; exit 2; }
+cd "$src" || { refuse "no repo $repo"; }
 
 # Fetch is best-effort: if GitHub is unreachable the job still runs from the local copy.
 # The ledger records whether it fetched.
@@ -46,14 +64,20 @@ fetched=true
 git fetch -q origin 2>>"$logdir/git.err" || { fetched=false; say "git fetch failed (continuing from local HEAD)"; }
 
 if [ -e "$wt" ]; then
-  echo "{\"task_id\":\"$id\",\"exit\":2,\"error\":\"worktree exists: refuse to reuse a task id\"}"; exit 2
+  refuse "worktree exists: refuse to reuse a task id"
 fi
 # Branch from the freshly fetched upstream when there is one: the node's local branch may be
 # behind, and a job built on stale code produces a diff nobody can merge.
 base_ref=HEAD
-if [ "$fetched" = true ] && git rev-parse -q --verify '@{u}' >/dev/null; then base_ref='@{u}'; fi
+if [ -n "${ENJAMBRE_REF:-}" ]; then
+  # --ref: that branch or nothing; a job on the wrong code is worse than no job.
+  case "$ENJAMBRE_REF" in *..*|-*|*[!A-Za-z0-9._/-]*) refuse "bad ref" ;; esac
+  [ "$fetched" = true ] || { refuse "fetch failed and a ref was asked"; }
+  base_ref="origin/$ENJAMBRE_REF"
+  git rev-parse -q --verify "$base_ref" >/dev/null || { refuse "no $base_ref on the node"; }
+elif [ "$fetched" = true ] && git rev-parse -q --verify '@{u}' >/dev/null; then base_ref='@{u}'; fi
 git worktree add -q "$wt" -b "$branch" "$base_ref" 2>>"$logdir/git.err" || {
-  echo "{\"task_id\":\"$id\",\"exit\":2,\"error\":\"worktree add failed\"}"; exit 2; }
+  refuse "worktree add failed"; }
 # The repo's venv lives in the clone (gitignored), not in a fresh worktree: link it so the
 # AGENTS.md tests-cmd (`.venv/bin/python ...`) runs the same here. `.venv/` in .gitignore does
 # not match a symlink, so exclude the link in the shared info/exclude (local, never committed).
@@ -74,7 +98,7 @@ allowed='Read,Edit,Write,Glob,Grep,Bash(git status:*),Bash(git diff:*),Bash(ls:*
 if [ -n "${ENJAMBRE_ALLOWED_B64:-}" ]; then
   allowed=$(printf '%s' "$ENJAMBRE_ALLOWED_B64" | /usr/bin/python3 -c 'import base64,sys; print(base64.b64decode(sys.stdin.read()).decode())')
 fi
-case "$allowed" in *"'"*) echo "{\"task_id\":\"$id\",\"exit\":2,\"error\":\"quote in allowedTools\"}"; exit 2 ;; esac
+case "$allowed" in *"'"*) refuse "quote in allowedTools" ;; esac
 maxturns=${ENJAMBRE_MAX_TURNS:-8}
 
 # prompt 20: every job is its own process group (setsid) so the scheduler can pause or stop the
@@ -85,7 +109,7 @@ maxturns=${ENJAMBRE_MAX_TURNS:-8}
 prio=''
 if [ -n "${ENJAMBRE_PRIO_B64:-}" ]; then
   prio=$(printf '%s' "$ENJAMBRE_PRIO_B64" | /usr/bin/python3 -c 'import base64,sys; print(base64.b64decode(sys.stdin.read()).decode())')
-  case "$prio" in *[!a-z0-9\ -]*) echo "{\"task_id\":\"$id\",\"exit\":2,\"error\":\"bad priority prefix\"}"; exit 2 ;; esac
+  case "$prio" in *[!a-z0-9\ -]*) refuse "bad priority prefix" ;; esac
 fi
 cat > "$logdir/setsid.py" <<'SETSID'
 import os, sys
@@ -161,4 +185,6 @@ fi
 
 printf '{"task_id":"%s","branch":"%s","exit":%s,"duration_s":%s,"pushed":%s,"fetched":%s,"worktree":%s,"detail":%s}\n' \
   "$id" "$branch" "$rc" "$((end-start))" "$pushed" "$fetched" "$(json_str "$wt")" "$usage"
+finished=1
+printf '{"task_id":"%s","state":"%s","rc":%s}\n' "$id" "$([ "$rc" = 0 ] && echo ok || echo failed)" "$rc" > "$logdir/status.json"
 exit "$rc"

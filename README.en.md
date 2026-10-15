@@ -86,6 +86,14 @@ python tools/publicar/auditar.py          # the publication audit (needs AUDITOR
 through the same code as the real visor (collector, page builder, live assembly); only the data is
 synthetic and repeatable.
 
+A new repo on a node is cloned once, with no agent: `python enjambre.py clone --node <node> <repo>`
+(idempotent: answers `cloned` or `exists`, uses the local clone's `origin` or `--url`, and writes one
+`worker: clone` line to the ledger). `--repo` is always the folder **name** under `<portfolio>/`,
+never a path; the starting branch is picked with `--ref <branch>`. Before launching, `run` checks
+over ssh that `<portfolio>/<repo>/.git` exists on the node and, if not, fails at once naming the
+`clone` command that fixes it. A job that dies before it starts shows in `status` as
+`dead-at-launch` with its reason, and `python enjambre.py logs <id>` fetches the node-side logs.
+
 ## What it measures and produces
 
 Each job leaves a branch and a ledger line. The visor adds up usage as two costs (API equivalent

@@ -215,7 +215,7 @@ def ledger_entry(meta: dict, st: dict, note: str | None, pushed: bool) -> dict:
     agent = meta["kind"] != "script"
     return {
         "id": meta["id"], "node": meta["node"], "worker": "claude" if agent else "script",
-        "repo": meta["repo"], "branch": st.get("branch"), "start": utc(st.get("start")),
+        "repo": meta["repo"], "branch": st.get("branch"), "start": utc(st.get("start")) or meta.get("launched"),
         "end": utc(st.get("end")),
         "exit": rc if isinstance(rc, int) else 2, "status": status, "reason": reason,
         "permission_denials": st.get("permission_denials") or None,
@@ -235,6 +235,52 @@ def ledger_entry(meta: dict, st: dict, note: str | None, pushed: bool) -> dict:
         "priority": meta.get("priority") or "normal", "preemptable": meta.get("preemptable"),
         "resumable": meta.get("resumable"), "preemptions": st.get("preemptions") or None,
     }
+
+
+DEAD_AT_LAUNCH_S = 90
+NODE_LOGS = ("supervisor.out", "supervisor.log", "worker.log", "worker.err", "git.err", "status.json")
+
+
+def node_logs(host: str, jid: str, tail: int = 40, ssh_fn=ssh) -> tuple[int, str]:
+    """The node-side files of a job, last `tail` lines each, home path folded to ~. supervisor.out
+    holds what the supervisor printed before it could write anything (its traceback)."""
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,80}", jid):
+        return 2, f"bad job id {jid!r}"
+    n = max(1, min(int(tail), 2000))
+    names = " ".join(NODE_LOGS)
+    cmd = (f"cd .enjambre/jobs/{jid} 2>/dev/null || {{ echo 'no ~/.enjambre/jobs/{jid} on the node'; exit 3; }}; "
+           f"for f in {names} $(ls -t log log.* 2>/dev/null | head -1); do "
+           f"[ -f \"$f\" ] && {{ echo \"== $f\"; tail -n {n} \"$f\"; }}; done; true")
+    r = ssh_fn(host, cmd)
+    text = (r.stdout or b"").decode("utf-8", "replace")
+    return r.returncode, re.sub(r"/Users/[^/\s]+", "~", text)
+
+
+def first_error(text: str) -> str | None:
+    """The line that names the crash: the last `XxxError: ...` of a traceback, else the last
+    non-empty line that is not a file header."""
+    lines = [l.strip() for l in text.splitlines() if l.strip() and not l.startswith("== ")]
+    for l in reversed(lines):
+        if re.match(r"[A-Za-z_.]*(Error|Exception|Exit)\b", l):
+            return l[:200]
+    return lines[-1][:200] if lines else None
+
+
+def dead_at_launch(meta: dict, st: dict, t: float | None = None) -> bool:
+    """Launched, but the supervisor never got its job going: no status at all (`unknown`), or a
+    `starting`/`dead` status with no child and no heartbeat, 90 s after launch. A supervisor
+    that is alive is never declared dead here, however long its git takes."""
+    if st.get("alive") or st.get("child_pid") or int(st.get("latidos_n") or 0):
+        return False
+    if st.get("state") not in ("unknown", "starting", "dead"):
+        return False
+    if st.get("state") == "unknown" and not st.get("launched"):
+        return False
+    try:
+        age = (t or time.time()) - dt.datetime.fromisoformat(meta["launched"]).timestamp()
+    except (KeyError, TypeError, ValueError):
+        return False
+    return age >= DEAD_AT_LAUNCH_S
 
 
 def collect(append_ledger, bring_home=None, notify=None, ssh_fn=ssh, fetch_fn=fetch_file,
@@ -257,8 +303,32 @@ def collect(append_ledger, bring_home=None, notify=None, ssh_fn=ssh, fetch_fn=fe
             st = sts.get(m["id"])
             if not st:
                 continue
+            # Re-read: the ssh above takes seconds, and `cerrar` or another collect (watch's)
+            # may have closed the job meanwhile; acting on the stale copy wrote a second ledger
+            # line and un-collected it (sync-branch, 2026-10-15).
+            fresh = read_meta(m["id"])
+            if not fresh or fresh.get("collected"):
+                continue
+            m = fresh
             jd = JOBS / m["id"]
             new = copy_beats(host, m["id"], int(st.get("latidos_n") or 0), ssh_fn)
+            if dead_at_launch(m, st):
+                # Terminal: one ledger line and collected, or watch would log it every minute.
+                rc_logs, text = node_logs(host, m["id"], 60, ssh_fn)
+                (jd / "node.log").write_text(text, encoding="utf-8", newline="\n")
+                why = first_error(text) if rc_logs == 0 else None
+                st = dict(st, state="dead-at-launch", reason="dead-at-launch: " + (
+                    why or "no status and no log on the node (the supervisor never started)"))
+                P.write_json_atomic(jd / "status.json", st)
+                entry = ledger_entry(m, st, None, False)
+                entry["reason_code"] = "dead-at-launch"
+                append_ledger(entry)
+                m.update(collected=True, collected_at=now())
+                write_meta(m)
+                if notify:
+                    notify("enjambre", f"{m['id']}: {st['reason']}")
+                done.append({"id": m["id"], "state": "dead-at-launch", "ledger": True})
+                continue
             P.write_json_atomic(jd / "status.json", st)
             state = st.get("state")
             if state == "dead":
@@ -311,7 +381,7 @@ def follow(jid: str, interval: float = 5, ssh_fn=ssh, out=sys.stdout, sleep=time
             last_beat = b.get("ts")
             out.write(beat_line(st) + "\n")
         out.flush()
-        if st.get("state") in FINAL or st.get("state") in ("dead", "unknown"):
+        if st.get("state") in FINAL or st.get("state") in ("dead", "unknown", "dead-at-launch"):
             return st
         rounds += 1
         if max_rounds is not None and rounds >= max_rounds:
@@ -372,6 +442,28 @@ def resume(jid: str, ssh_fn=ssh, ship_fn=ship) -> dict:
                     resumed=now())
         write_meta(meta)
     return res
+
+
+def close(jid: str, reason: str, append_ledger, code: str = "closed") -> dict:
+    """Close a long job by hand: one terminal ledger line (status failed, the reason given) and
+    collected=True, so collect and watch stop looking at it. Only for a job that is not running:
+    the last status the PC saw must be dead, unknown or dead-at-launch. Never touches the node."""
+    meta = read_meta(jid)
+    if not meta:
+        return {"id": jid, "closed": False, "error": "unknown job (no state/jobs/<id>/job.json)"}
+    if meta.get("collected"):
+        return {"id": jid, "closed": False, "error": "already collected"}
+    st = P.read_state(JOBS / jid / "status.json")
+    if st.get("alive") or st.get("state") not in (None, "dead", "unknown", "dead-at-launch", "starting"):
+        return {"id": jid, "closed": False, "error": f"job is {st.get('state')}: kill it first"}
+    st = dict(st, state=code, reason=reason)
+    P.write_json_atomic(JOBS / jid / "status.json", st)
+    entry = ledger_entry(meta, st, None, False)
+    entry["reason_code"] = code
+    append_ledger(entry)
+    meta.update(collected=True, collected_at=now(), closed_by_hand=reason)
+    write_meta(meta)
+    return {"id": jid, "closed": True, "reason": reason}
 
 
 def kill(jid: str, ssh_fn=ssh) -> dict:

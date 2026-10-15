@@ -62,6 +62,44 @@ class ContractError(Exception):
     """The job was refused before touching any node."""
 
 
+# A repo is a folder NAME under <portfolio>/ on every node. A path is refused: on the PC
+# `PORTFOLIO / "C:\...\wt\x"` IS that absolute path, so the local check passed while the Mac
+# looked for `~/Documents/Portfolio/C:\...` and the job died unseen (eco-gates-2, 2026-10-15).
+REPO_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}")
+# A branch for --ref: what git accepts, minus anything a shell or git option could read.
+REF_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]{0,199}")
+
+
+def check_repo_name(repo: str) -> None:
+    if not REPO_NAME.fullmatch(repo or "") or ".." in repo:
+        raise ContractError(f"--repo must be a repo name under <portfolio>/, not a path: {repo!r}. "
+                            "Pick the branch with --ref <branch>.")
+
+
+def check_ref(ref: str | None) -> None:
+    if ref is not None and (not REF_NAME.fullmatch(ref) or ".." in ref or ref.endswith((".lock", "/"))):
+        raise ContractError(f"--ref is not a plain branch name: {ref!r}")
+
+
+def repo_on_node(host: str, repo: str, sh_fn=None) -> bool | None:
+    """Same ssh as presence: True = <portfolio>/<repo>/.git exists on the node, False = it does
+    not, None = the node did not answer (the node-side check in jobrun.launch still runs)."""
+    r = (sh_fn or sh)(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", host,
+                       f'test -d "$HOME/Documents/Portfolio/{repo}/.git"'])
+    if r.returncode == 0:
+        return True
+    return False if r.returncode == 1 else None
+
+
+def preflight(node_name: str, host: str, repo: str) -> int:
+    """0 = go on. 3 = the repo is not on the node: say the one command that fixes it."""
+    if repo_on_node(host, repo) is False:
+        print(f"enjambre: {repo} is not cloned on {node_name} (~/Documents/Portfolio/{repo}/.git "
+              f"missing). Fix: python enjambre.py clone --node {node_name} {repo}", file=sys.stderr)
+        return 3
+    return 0
+
+
 def task_id_from(task: Path) -> str:
     m = re.fullmatch(r"TASK-([a-z0-9][a-z0-9-]{0,40})\.md", task.name)
     if not m:
@@ -112,12 +150,14 @@ def save_job_log(tid: str, text: str, keep_lines: int = 2000) -> None:
     (d / "log").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
-def append_ledger(entry: dict, ledger: Path = LEDGER) -> None:
+def append_ledger(entry: dict, ledger: Path | None = None) -> None:
     """WHY append-only: no ledger line = the job did not happen. One line per run, never edited.
     Every row goes through razones.enrich: a failed or incomplete job carries its cause in one
     line, its log path, and `test: true` when it is a sandbox/stub/fire test (F3)."""
     entry = RZ.enrich(entry, STATE)
-    with open(ledger, "a", encoding="utf-8", newline="\n") as f:
+    # Read at call time: a default bound at import would ignore a test's E.LEDGER (2026-10-15:
+    # the clone tests wrote three rows into the real jobs.jsonl).
+    with open(ledger or LEDGER, "a", encoding="utf-8", newline="\n") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
@@ -296,7 +336,7 @@ def enqueue_job(a, tid: str, text: str, level: str, route_info: dict) -> int:
     try:
         job = P.enqueue(STATE, tid, text,
                         {"node": a.node, "repo": a.repo, "worker": a.worker, "knobs": knobs,
-                         "level_at_enqueue": level, "origin_session": origin_session(a), **route_info})
+                         "ref": getattr(a, "ref", None), "level_at_enqueue": level, "origin_session": origin_session(a), **route_info})
     except P.QueueError as e:
         print(f"enjambre: {e}", file=sys.stderr)
         return 2
@@ -311,6 +351,12 @@ def cmd_run(a) -> int:
     if a.node and a.node not in nodes:
         print(f"unknown node {a.node}", file=sys.stderr)
         return 2
+    try:
+        check_repo_name(a.repo)
+        check_ref(getattr(a, "ref", None))
+    except ContractError as e:
+        print(f"enjambre: {e}", file=sys.stderr)
+        return 3
     repo_dir = PORTFOLIO / a.repo
     task = Path(a.task)
     try:
@@ -322,6 +368,8 @@ def cmd_run(a) -> int:
     text = task.read_text(encoding="utf-8")
     kind, kind_src, classify_cost = resolve_kind(a, text, cfg)
     route_info = {"kind": kind, "kind_source": kind_src}
+    if getattr(a, "ref", None):
+        route_info["ref"] = a.ref
     if frontmatter_flag(text, "test") is True:   # `test: true` in the TASK = a test, not work (F3)
         route_info["test"] = True
     if classify_cost is not None:
@@ -411,6 +459,8 @@ def cmd_run(a) -> int:
                                                            state_since=P.now_iso()))
     push, push_why = push_policy(text, repo_dir)  # after the queue: a queued job asks nobody
     route_info["push_policy"] = push_why
+    if preflight(a.node, host, a.repo):
+        return 3
     started = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
     # Ship the worker each run: the node always runs the version reviewed here.
     up = sh(["ssh", "-o", "BatchMode=yes", host, "mkdir -p ~/.enjambre"])
@@ -423,6 +473,8 @@ def cmd_run(a) -> int:
              if k in ("ENJAMBRE_MAX_TURNS", "ENJAMBRE_NODE_PUSH") and re.fullmatch(r"[0-9]+", v)]
     if not push:  # the node-side push skips gitleaks: never when the policy says no
         knobs = [k for k in knobs if not k.startswith("ENJAMBRE_NODE_PUSH=")]
+    if getattr(a, "ref", None):  # checked by check_ref: no shell or git metacharacters
+        knobs.append("ENJAMBRE_REF=" + a.ref)
     if kind == "tests":  # base64: the list crosses ssh, env and tmux-run.sh untouched
         knobs.append("ENJAMBRE_ALLOWED_B64=" + base64.b64encode(allowed.encode()).decode())
     prefix = S.os_prefix(S.load(), route_info["priority"], node.get("os", ""))
@@ -472,8 +524,10 @@ def run_detached(a, tid: str, kind: str, body: str, allowed: str, node: dict, ro
     if node["host"] == "local":
         print("enjambre: --detach needs a remote node", file=sys.stderr)
         return 2
+    if preflight(a.node, node["host"], a.repo):
+        return 3
     spec = {"id": tid, "kind": kind, "repo": a.repo, "task": body, "allowed": allowed,
-            "max_turns": a.max_turns, "budget_usd": a.budget, "model": a.model,
+            "ref": getattr(a, "ref", None), "max_turns": a.max_turns, "budget_usd": a.budget, "model": a.model,
             "beat_s": a.beat, "beat_log_s": a.beat_log, "prices": L.prices_for(a.model),
             **sched_spec(route_info, node)}
     meta = {"origin_session": origin_session(a), "budget_usd": a.budget, "push": push,
@@ -508,6 +562,11 @@ def cmd_script(a) -> int:
     if a.node not in nodes or nodes[a.node]["host"] == "local":
         print(f"script needs a remote node: {a.node}", file=sys.stderr)
         return 2
+    try:
+        check_repo_name(a.repo)
+    except ContractError as e:
+        print(f"enjambre: {e}", file=sys.stderr)
+        return 3
     repo_dir = PORTFOLIO / a.repo
     if not (repo_dir / "AGENTS.md").is_file():
         print(f"enjambre: {a.repo} has no AGENTS.md", file=sys.stderr)
@@ -532,6 +591,8 @@ def cmd_script(a) -> int:
         return 0
     if not ok:
         return enqueue_detached(a.node, nodes, spec, meta, state, reason)
+    if preflight(a.node, nodes[a.node]["host"], a.repo):
+        return 3
     meta["sched_reason"] = reason
     res = L.launch(a.node, nodes[a.node]["host"], spec, meta)
     print(json.dumps(res, ensure_ascii=False))
@@ -542,6 +603,72 @@ def cmd_script(a) -> int:
     if a.follow:
         return cmd_follow(tid, a.interval)
     return 0
+
+
+CLONE_URL = re.compile(r"(https://|git@)[A-Za-z0-9@:./_~-]+")
+
+
+def clone_script(repo: str, url: str) -> str:
+    """The node-side line: idempotent, one word on stdout (`exists` | `cloned`)."""
+    d = f'"$HOME/Documents/Portfolio/{repo}"'
+    return (f"if [ -d {d}/.git ]; then echo exists; "
+            f"elif [ -e {d} ]; then echo 'not a git repo: ~/Documents/Portfolio/{repo}' >&2; exit 3; "
+            f"else git clone --quiet {shlex.quote(url)} {d} && echo cloned; fi")
+
+
+def origin_url(repo: str) -> str | None:
+    r = sh(["git", "-C", str(PORTFOLIO / repo), "remote", "get-url", "origin"])
+    return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
+
+
+def clone_on_node(node_name: str, host: str, repo: str, url: str, sh_fn=None) -> tuple[int, str]:
+    """Clone through tmux-run.sh: the window is born in the GUI session, so git reads the login
+    keychain (HTTPS to a private repo). Over plain ssh it would fail as "not logged in"."""
+    run = sh_fn or sh
+    up = run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", host, "mkdir -p ~/.enjambre"])
+    up = up if up.returncode else run(["scp", "-q", str(TMUX_RUN), f"{host}:.enjambre/"])
+    if up.returncode:
+        return 4, "cannot reach node: " + (up.stderr or "").strip()[-200:]
+    r = run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", host,
+             "bash .enjambre/tmux-run.sh -t 900 -- bash -c " + shlex.quote(clone_script(repo, url))])
+    out = ((r.stdout or "").strip().splitlines() or [""])[-1]
+    return r.returncode, out if r.returncode == 0 else ((r.stderr or "").strip()[-300:] or out)
+
+
+def cmd_clone(a) -> int:
+    """`enjambre clone --node mac <repo> [--url ...]`: no agent, no TASK, no sandbox script
+    (the three `tests` jobs that tried it failed: brace expansion refused, a command not
+    approved, a script nobody committed). One ledger line, worker `clone`."""
+    try:
+        check_repo_name(a.repo)
+    except ContractError as e:
+        print(f"enjambre: {e}", file=sys.stderr)
+        return 3
+    nodes = load_nodes()
+    if a.node not in nodes or nodes[a.node]["host"] == "local":
+        print(f"clone needs a remote node: {a.node}", file=sys.stderr)
+        return 2
+    url = a.url or origin_url(a.repo)
+    if not url:
+        print(f"enjambre: {a.repo} has no local origin to copy; pass --url", file=sys.stderr)
+        return 3
+    if not CLONE_URL.fullmatch(url):
+        print(f"enjambre: --url is not an https:// or git@ URL: {url!r}", file=sys.stderr)
+        return 3
+    started = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+    t0 = time.time()
+    rc, out = clone_on_node(a.node, nodes[a.node]["host"], a.repo, url)
+    entry = {"id": L.job_id(f"clone-{a.repo}"), "node": a.node, "worker": "clone", "repo": a.repo,
+             "branch": None, "start": started,
+             "end": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+             "exit": rc, "status": "ok" if rc == 0 else "failed", "pushed": False,
+             "duration_s": int(time.time() - t0), "cost_usd": 0, "kind": "clone",
+             "result": out[:300] or None, "reason": None if rc == 0 else out[:160] or f"exit {rc}",
+             "url": url, "routed_by": "explicit", "route_reason": f"clone --node {a.node}",
+             "origin_session": origin_session(a)}
+    append_ledger(entry)
+    print(json.dumps(entry, ensure_ascii=False))
+    return rc
 
 
 def bring_home_detached(meta: dict, st: dict) -> tuple[bool, str]:
@@ -577,6 +704,36 @@ def cmd_follow(tid: str, interval: float = 5) -> int:
     for d in collect_now(tid):
         print(json.dumps(d, ensure_ascii=False))
     return 0 if st.get("state") == "ok" else 1
+
+
+def cmd_cerrar(a) -> int:
+    """`enjambre cerrar <id> --razon "..."`: a dead long job nobody will resume -> one terminal
+    ledger line, and watch stops logging it every minute."""
+    res = L.close(a.id, a.razon, append_ledger, a.estado)
+    print(json.dumps(res, ensure_ascii=False))
+    return 0 if res.get("closed") else 2
+
+
+def cmd_logs(a) -> int:
+    """`enjambre logs <id> [--tail N]`: the node-side logs (supervisor.out has the traceback of a
+    supervisor that died before writing a status) -> state/jobs/<id>/node.log, and printed."""
+    meta = L.read_meta(a.id)
+    nodes = load_nodes()
+    node = (meta or {}).get("node") or a.node
+    if node not in nodes or nodes[node]["host"] == "local":
+        print(f"enjambre: unknown remote node {node}", file=sys.stderr)
+        return 2
+    host = P.job_host(meta) if meta else nodes[node]["host"]
+    rc, text = L.node_logs(host, a.id, a.tail)
+    if rc == 2 and not text.strip().startswith("=="):
+        print(f"enjambre: {text}", file=sys.stderr)
+        return 2
+    d = STATE / "jobs" / a.id
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "node.log").write_text(text, encoding="utf-8", newline="\n")
+    sys.stdout.write(text)
+    print(f"-> state/jobs/{a.id}/node.log", file=sys.stderr)
+    return 0 if rc == 0 else rc
 
 
 def cmd_resume(a) -> int:
@@ -668,7 +825,8 @@ def cmd_status(a) -> int:
         # Lines written before the status field existed fall back to the exit code.
         status = e.get("status") or ("ok" if e["exit"] == 0 else "failed")
         print(f"{e['start']}  {e['id']:<24} {e['node']:<4} {e['worker']:<9} {status:<10} exit={e['exit']} "
-              f"pushed={e['pushed']} {e.get('branch') or ''}")
+              f"pushed={e['pushed']} {e.get('branch') or ''}"
+              + (f"  [{e['reason'][:90]}]" if status != "ok" and e.get("reason") else ""))
     return 0
 
 
@@ -1026,7 +1184,8 @@ def spawn_job(meta: dict) -> subprocess.Popen:
     env["ENJAMBRE_ORIGIN_SESSION"] = meta.get("origin_session") or ""
     # The child gets --node, so it would log routed_by=explicit: pass the original routing on.
     routed = []
-    for key, flag in (("kind", "--kind"), ("routed_by", "--routed-by"), ("route_reason", "--route-reason")):
+    for key, flag in (("kind", "--kind"), ("routed_by", "--routed-by"), ("route_reason", "--route-reason"),
+                      ("ref", "--ref")):
         if meta.get(key):
             routed += [flag, meta[key]]
     return subprocess.Popen(
@@ -1300,7 +1459,8 @@ def main(argv=None) -> int:
     sub = p.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
     r.add_argument("--node", help="force the node (routed_by=explicit); omit it to route")
-    r.add_argument("--repo", required=True)
+    r.add_argument("--repo", required=True, help="repo NAME under <portfolio>/ (never a path)")
+    r.add_argument("--ref", help="branch to start the job's worktree from (origin/<ref>); default: upstream")
     r.add_argument("--task", required=True)
     r.add_argument("--worker", default="claude")
     r.add_argument("--engine", choices=("claude", "local"), default="claude",
@@ -1401,9 +1561,24 @@ def main(argv=None) -> int:
     sc.add_argument("--dry-run", action="store_true")
     sc.add_argument("args", nargs=argparse.REMAINDER, help="-- extra arguments, appended quoted")
     sc.set_defaults(fn=cmd_script)
+    cl = sub.add_parser("clone", help="clone a repo into <portfolio>/<repo> on a node (idempotent, no agent)")
+    cl.add_argument("repo", help="repo name under <portfolio>/")
+    cl.add_argument("--node", default="mac")
+    cl.add_argument("--url", help="default: the local clone's origin")
+    cl.set_defaults(fn=cmd_clone)
     co = sub.add_parser("collect", help="bring finished long jobs home (watch does it every minute)")
     co.add_argument("id", nargs="?")
     co.set_defaults(fn=cmd_collect)
+    ce = sub.add_parser("cerrar", help="close a dead long job by hand: one terminal ledger line, collected")
+    ce.add_argument("id")
+    ce.add_argument("--razon", required=True)
+    ce.add_argument("--estado", choices=("closed", "dead-at-launch"), default="closed")
+    ce.set_defaults(fn=cmd_cerrar)
+    lg = sub.add_parser("logs",help="fetch a job's node-side logs into state/jobs/<id>/node.log")
+    lg.add_argument("id")
+    lg.add_argument("--tail", type=int, default=40, help="lines per file")
+    lg.add_argument("--node", default="mac", help="for a job with no state/jobs/<id>/job.json")
+    lg.set_defaults(fn=cmd_logs)
     rs = sub.add_parser("resume", help="restart a dead long job where it stopped")
     rs.add_argument("id")
     rs.set_defaults(fn=cmd_resume)

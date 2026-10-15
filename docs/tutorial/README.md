@@ -41,6 +41,7 @@ ejecutado aparece marcado como **Pendiente**; nada se inventa.
 | [29 — Prioridades](29-prioridades.md) | Lo urgente pasa delante sin matar lo que espera: reglas en un archivo, admisión, prioridad del sistema operativo y preempción en el tick de `live --serve` | Claude Code | hecho; tres decisiones del owner abiertas (NEEDS-OWNER §24) |
 | [30 — Arranque desatendido](30-arranque.md) | Que el enjambre vuelva solo tras un reinicio: inventario de lo que arranca, `ready` solo cuando `claude` puede trabajar, tareas `--boot`, ruta /32 para la VPN | Claude Code (reinicios y sudo: tú) | a medias; los resultados del reinicio real y la prueba con la VPN encendida están pendientes del owner |
 | [31 — Pulido del visor](31-pulido-visor.md) | Cada número del visor dice de cuándo es y de dónde sale; la causa de un fallo sin el nombre de usuario | Claude Code | hecho; la pestaña Proyectos aún muestra el nombre de la carpeta de inicio |
+| [32 — Arranque ciego](32-arranque-ciego.md) | Un trabajo que no puede correr falla en el acto y dice por qué; `clone`, `--ref`, `dead-at-launch`, `logs`, `cerrar` | Claude Code | hecho; el `watch` residente necesita reiniciarse para usarlo |
 
 Convención: los bloques que empiezan con `PS>` se corren en PowerShell de Windows; los que
 empiezan con `mac$` se corren en la Terminal de la Mac.

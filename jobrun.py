@@ -245,13 +245,28 @@ def ensure_worktree(spec: dict, st: dict, log) -> str | None:
     if os.path.isdir(wt):
         return wt
     src = os.path.join(PORTFOLIO, spec["repo"])
+    if not os.path.isdir(os.path.join(src, ".git")):
+        st["reason"] = f"repo not cloned on this node: ~/Documents/Portfolio/{spec['repo']}"
+        return None
     fetched = git(["fetch", "-q", "origin"], src, log) == 0
     base = "HEAD"
-    if fetched and subprocess.run(["git", "rev-parse", "-q", "--verify", "@{u}"], cwd=src,
-                                  capture_output=True).returncode == 0:
+    ref = spec.get("ref")
+    if ref:
+        # An explicit branch never falls back to HEAD: a job on the wrong code is worse than none.
+        if not fetched:
+            st["reason"] = f"git fetch failed and --ref {ref} was asked"
+            return None
+        base = f"origin/{ref}"
+        if subprocess.run(["git", "rev-parse", "-q", "--verify", base], cwd=src,
+                          capture_output=True).returncode:
+            st["reason"] = f"--ref {ref}: no {base} on the node after fetch"
+            return None
+    elif fetched and subprocess.run(["git", "rev-parse", "-q", "--verify", "@{u}"], cwd=src,
+                                    capture_output=True).returncode == 0:
         base = "@{u}"
     st["fetched"] = fetched
     if git(["worktree", "add", "-q", wt, "-b", f"mac/{spec['id']}", base], src, log):
+        st["reason"] = "worktree add failed (supervisor.log has git's message)"
         return None
     # Same as worker.sh: the clone's gitignored venv, linked, excluded locally (never committed).
     venv = os.path.join(src, ".venv")
@@ -322,6 +337,40 @@ def classify_agent(res: dict | None, rc: int, budget: float | None, spent: float
 
 
 def supervise(jid: str) -> int:
+    """WHY a wrapper: on 2026-10-15 three supervisors died in their first second (a `git fetch`
+    with cwd = a repo not cloned here raises before any status existed), so the PC saw
+    `unknown` forever. Now the first act is a `starting` status, and any exception ends in a
+    `failed` status with its reason and rc: there is no way out without a state on disk."""
+    d = jdir(jid)
+    path = os.path.join(d, "status.json")
+    st = read_json(path, {}) or {}
+    st.update(id=jid, state="starting", supervisor_pid=os.getpid(), starting_at=now())
+    for k in ("rc", "end", "reason", "trace"):
+        st.pop(k, None)
+    os.makedirs(d, exist_ok=True)
+    write_json(path, st)
+    with open(os.path.join(d, "supervisor.log"), "a", encoding="utf-8") as f:
+        f.write(f"{now()} starting supervisor pid {os.getpid()}\n")
+    try:
+        return _supervise(jid)
+    except BaseException as e:  # noqa: BLE001 - SystemExit too: it would leave `starting`
+        import traceback
+        tail = traceback.format_exc().strip().splitlines()[-6:]
+        st = read_json(path, {}) or {}
+        if st.get("pgid") and group_alive(st.get("pgid")):
+            killpg(int(st["pgid"]))   # nobody else would ever finish the child
+        msg = str(e).replace(HOME, "~")[:200]
+        st.update(state="failed", rc=2, end=now(), alive=False,
+                  reason=f"supervisor crashed: {type(e).__name__}: {msg}",
+                  trace=[x.replace(HOME, "~") for x in tail])
+        write_json(path, st)
+        with open(os.path.join(d, "supervisor.log"), "a", encoding="utf-8") as f:
+            f.write(f"{now()} crashed: {st['reason']}\n" + "\n".join(tail) + "\n")
+        busy_release()
+        return 2
+
+
+def _supervise(jid: str) -> int:
     d = jdir(jid)
     spec = read_json(os.path.join(d, "spec.json"))
     if not spec:
@@ -358,7 +407,7 @@ def supervise(jid: str) -> int:
     else:
         cwd = ensure_worktree(spec, st, log)
         if not cwd:
-            st.update(state="failed", reason="worktree add failed", end=now(), rc=2)
+            st.update(state="failed", reason=st.get("reason") or "worktree add failed", end=now(), rc=2)
             write_json(os.path.join(d, "status.json"), st)
             return 2
         st["worktree"], st["branch"] = cwd, f"mac/{jid}"
@@ -642,7 +691,7 @@ def status(jid: str) -> dict:
     if st is None:
         return {"id": jid, "state": "unknown", "alive": False,
                 "launched": os.path.isfile(os.path.join(d, "spec.json"))}
-    live_states = ("running", "paused_by_priority")
+    live_states = ("starting", "running", "paused_by_priority")
     alive = pid_alive(st.get("supervisor_pid")) and st.get("state") in live_states
     st["alive"] = alive
     if st.get("state") in live_states and not alive:
@@ -675,6 +724,15 @@ def launch(jid: str, resume: bool = False) -> dict:
         killpg(int(cur["pgid"]))  # a dead supervisor's job still running: never run it twice
     me = os.path.abspath(__file__)
     spec = read_json(os.path.join(d, "spec.json"), {}) or {}
+    # The PC checks this too (enjambre.py preflight), but a queued job is launched by watch hours
+    # later: refuse here, before tmux, so nothing is left `launched` without a status (2026-10-15).
+    repo = str(spec.get("repo") or "")
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}", repo) or ".." in repo:
+        return {"id": jid, "launched": False, "error": f"repo must be a name under ~/Documents/Portfolio: {repo!r}"}
+    if not os.path.isdir(os.path.join(PORTFOLIO, repo, ".git" if spec.get("kind") != "script" else "")):
+        return {"id": jid, "launched": False,
+                "error": f"repo not cloned on this node: ~/Documents/Portfolio/{repo} "
+                         f"(fix: python enjambre.py clone --node <node> {repo})"}
     # WHERE the supervisor is born decides what it may touch (measured 2026-10-07, E3):
     # - tmux (launchd GUI session): has the login keychain -> `claude` is logged in, git over
     #   HTTPS works. But macOS privacy (TCC) blocks it on an external disk: opendir() on
@@ -683,6 +741,7 @@ def launch(jid: str, resume: bool = False) -> dict:
     #   external disk, survives the ssh connection closing, but has no keychain.
     # Scripts need disks, agents need the keychain: that is the default split.
     via = spec.get("via") or ("ssh" if spec.get("kind") == "script" else "tmux")
+    asked = now()
     out_path = os.path.join(d, "supervisor.out")
     if via == "ssh":
         with open(out_path, "ab") as o:
@@ -705,6 +764,9 @@ def launch(jid: str, resume: bool = False) -> dict:
                 st.get("attempt", 0) > int(cur.get("attempt") or 0):
             return {"id": jid, "launched": True, "attempt": st["attempt"], "via": via,
                     "supervisor_pid": st["supervisor_pid"], "pgid": st["pgid"]}
+        if st.get("state") == "failed" and (st.get("starting_at") or "") >= asked:
+            # It died in its first seconds and said why: the caller hears it now, not at collect.
+            return {"id": jid, "launched": False, "error": st.get("reason") or "failed at start"}
         time.sleep(0.25)
     return {"id": jid, "launched": True, "attempt": None, "warning": "supervisor not confirmed in 10 s"}
 
