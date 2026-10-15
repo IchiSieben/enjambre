@@ -53,8 +53,9 @@ class UnreachableHost(unittest.TestCase):
             ship.tick(t0)
             self.assertLess(time.time() - t0, 8)
             node = P.read_state(path)["nodes"]["mac"]
-            self.assertEqual((node["level"], node["down_by"], node["prior_level"]), ("down", "live", "ready"))
-            self.assertIn("collector:", node["down_reason"])
+            self.assertEqual(node["level"], "ready")          # watch's key: live does not write it
+            self.assertEqual(P.level_of(node), "down")        # ... but every reader sees down
+            self.assertIn("collector:", node["live_down"]["reason"])
             self.assertEqual(ship.pending(), {"mac": ["collector", "jobrun"]})
             self.assertIn("retry in 5 s, marked down", c.lines[-1])
 
@@ -106,28 +107,44 @@ class WatchReadsTheMark(unittest.TestCase):
     def run_tick(self, observed):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "nodes.json"
-            P.write_json_atomic(path, {"nodes": {"mac": {
-                "level": "ready", "since": "2026-10-15T10:00:00+00:00", "checked": "x",
+            P.write_json_atomic(path, {"updated": P.now_iso(90), "nodes": {"mac": {
+                "level": "ready", "since": "2026-10-15T10:00:00+00:00", "checked": P.now_iso(90),
                 "observed": "ready", "lower_count": 0}}})
             LV.mark_down("mac", "collector: Connection timed out", 100, path)
-            LV.mark_down("mac", "jobrun: Connection timed out", 110, path)   # a second mark keeps the prior
+            LV.mark_down("mac", "jobrun: Connection timed out", 110, path)
             prev = P.read_state(path)
-        notes = []
-        log = logging.getLogger("test-live-ship")
-        out = P.tick({"mac": {"host": "mac"}}, prev, lambda h: observed, 130,
-                     lambda *m: notes.append(m), log)
-        return out["nodes"]["mac"], notes
+            notes = []
+            out = P.tick({"mac": {"host": "mac"}}, prev, lambda h: observed, 130,
+                         lambda *m: notes.append(m), logging.getLogger("test-live-ship"))
+            P.write_nodes_watch(path, out)
+            return P.read_state(path)["nodes"]["mac"], notes
 
-    def test_node_up_for_watch_undoes_the_mark_quietly(self):
+    def test_node_up_for_watch_outweighs_the_mark_quietly(self):
         node, notes = self.run_tick("ready")
         self.assertEqual((node["level"], node["since"], notes), ("ready", "2026-10-15T10:00:00+00:00", []))
-        self.assertFalse({"down_by", "down_reason", "prior_level", "prior_since"} & set(node))
+        self.assertEqual(P.level_of(node), "ready")               # watch probed after the mark
+        self.assertIn("jobrun:", node["live_down"]["reason"])     # live's key: only live clears it
 
     def test_node_down_for_watch_too_drops_now_and_notifies(self):
         node, notes = self.run_tick("down")
-        self.assertEqual(node["level"], "down")
-        self.assertEqual(len(notes), 1)
-        self.assertNotIn("down_by", node)
+        self.assertEqual((node["level"], P.level_of(node), len(notes)), ("down", "down", 1))
+
+    def test_live_clears_its_mark_when_the_node_takes_the_files(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "nodes.json"
+            P.write_json_atomic(path, {"nodes": {"mac": {"level": "ready", "checked": P.now_iso(0)}}})
+            up = {"v": False}
+            ship = LV.Shipper({"mac": {"host": "mac"}},
+                              [("jobrun", lambda h: None if up["v"] else "Connection timed out",
+                                lambda n, h: "jobrun shipped")],
+                              log=lambda s: None, mark=lambda n, r, t: LV.mark_down(n, r, t, path),
+                              clear=lambda n: LV.clear_down(n, path))
+            ship.tick(10)
+            self.assertIn("live_down", P.read_state(path)["nodes"]["mac"])
+            up["v"] = True
+            ship.tick(20)
+            node = P.read_state(path)["nodes"]["mac"]
+            self.assertEqual((node, ship.pending()), ({"level": "ready", "checked": P.now_iso(0)}, {}))
 
 
 if __name__ == "__main__":

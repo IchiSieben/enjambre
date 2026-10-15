@@ -13,6 +13,7 @@ WHY polling from Windows and not a heartbeat from the nodes: see docs/conceptos/
 """
 from __future__ import annotations
 
+import contextlib
 import datetime as dt
 import json
 import os
@@ -243,7 +244,7 @@ def write_json_atomic(path: Path, data: dict) -> None:
     """Write to a temp file and os.replace it. On Windows a reader holding the file open makes
     replace fail with PermissionError for a moment: retry briefly instead of crashing."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp = path.with_suffix(f"{path.suffix}.{os.getpid()}.tmp")   # two writers never share a temp file
     tmp.write_text(json.dumps(data, indent=1, ensure_ascii=False), encoding="utf-8", newline="\n")
     for i in range(10):
         try:
@@ -261,6 +262,95 @@ def read_state(path: Path) -> dict:
         return {}
 
 
+# ------------------------------------------------ nodes.json: one file, two writers ------------
+# watch owns every key of nodes.<n> and the node list; live owns only LIVE_KEYS (a node it could
+# not ship to). Each writer re-reads the file under a lock, replaces only its own keys and
+# writes temp + rename, so neither one drops the other's write.
+LIVE_KEYS = ("live_down",)
+
+
+def watch_owns(key: str) -> bool:
+    return key not in LIVE_KEYS
+
+
+@contextlib.contextmanager
+def file_lock(path: Path, timeout: float = 5.0, stale_s: float = 10.0):
+    """An O_EXCL lock file. A lock older than stale_s is a dead writer's: broken. After timeout
+    the write goes ahead unlocked (the merge still keeps the other's keys) rather than hang."""
+    t0 = time.time()
+    fd = None
+    while fd is None:
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            try:
+                if time.time() - os.path.getmtime(path) > stale_s:
+                    os.remove(path)
+                    continue
+            except OSError:
+                continue
+            if time.time() - t0 > timeout:
+                break
+            time.sleep(0.05)
+    try:
+        if fd is not None:
+            os.write(fd, str(os.getpid()).encode())
+            os.close(fd)
+        yield fd is not None
+    finally:
+        if fd is not None:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
+
+def merge_nodes(cur: dict, new: dict, mine, node_list_from_new: bool) -> dict:
+    """The file as it is now (cur) with this writer's keys (mine(key) True) taken from new."""
+    names = list(new.get("nodes", {})) if node_list_from_new else         list(dict.fromkeys([*cur.get("nodes", {}), *new.get("nodes", {})]))
+    out = {"updated": (new if node_list_from_new else cur).get("updated") or new.get("updated"), "nodes": {}}
+    for n in names:
+        c, w = cur.get("nodes", {}).get(n) or {}, new.get("nodes", {}).get(n) or {}
+        e = {k: v for k, v in c.items() if not mine(k)}
+        e.update({k: v for k, v in w.items() if mine(k)})
+        out["nodes"][n] = e
+    return out
+
+
+def write_nodes_watch(path: Path, state: dict) -> None:
+    with file_lock(path.with_suffix(".lock")):
+        write_json_atomic(path, merge_nodes(read_state(path), state, watch_owns, True))
+
+
+def write_live_mark(path: Path, node: str, mark: dict | None) -> None:
+    """live's only write: nodes.<node>.live_down = {at, reason}, or None to clear it."""
+    with file_lock(path.with_suffix(".lock")):
+        cur = read_state(path)
+        if mark is None and "live_down" not in (cur.get("nodes", {}).get(node) or {}):
+            return
+        new = {"nodes": {node: {"live_down": mark} if mark else {}}}
+        out = merge_nodes(cur, new, lambda k: k in LIVE_KEYS, False)
+        if mark is None:
+            out["nodes"][node].pop("live_down", None)
+        write_json_atomic(path, out)
+
+
+def live_mark_fresh(entry: dict) -> bool:
+    """live's mark is newer than watch's last probe of that node (watch has not weighed it yet)."""
+    m = entry.get("live_down")
+    if not m:
+        return False
+    try:
+        return dt.datetime.fromisoformat(m["at"]) > dt.datetime.fromisoformat(entry["checked"])
+    except (KeyError, TypeError, ValueError):
+        return "checked" not in entry
+
+
+def level_of(entry: dict) -> str | None:
+    """What readers use: watch's level, or `down` while live's mark is newer than watch's probe."""
+    return "down" if live_mark_fresh(entry) else entry.get("level")
+
+
 def fresh_level(state: dict, node: str, t: float, max_age: float = FRESH_S) -> str | None:
     """The level from nodes.json if `watch` wrote it recently, else None (caller probes live)."""
     n = state.get("nodes", {}).get(node)
@@ -270,7 +360,7 @@ def fresh_level(state: dict, node: str, t: float, max_age: float = FRESH_S) -> s
         age = t - dt.datetime.fromisoformat(n["checked"]).timestamp()
     except (KeyError, ValueError):
         return None
-    return n["level"] if age <= max_age else None
+    return level_of(n) if age <= max_age else None
 
 
 # ---------------------------------------------------------------- queue (filesystem) ---------
@@ -548,11 +638,10 @@ def tick(nodes: dict, prev: dict, probe_fn, t: float, notify_fn, log, mounts_fn=
     out = {"updated": now_iso(t), "nodes": {}}
     for name, cfg in nodes.items():
         old = prev.get("nodes", {}).get(name)
-        if old and old.get("down_by"):   # live.mark_down: one more lower observation, not a level of its own
-            prior = old.get("prior_level")
-            since = old.get("prior_since") or old.get("since")
-            old = {k: v for k, v in old.items() if k not in ("down_by", "down_reason", "prior_level", "prior_since")}
-            old = dict(old, level=prior, since=since, lower_count=DROP_AFTER - 1) if prior else None
+        if old and live_mark_fresh(old):   # live could not reach it: one more lower observation
+            old = dict(old, lower_count=max(old.get("lower_count", 0), DROP_AFTER - 1))
+        if old:
+            old = {k: v for k, v in old.items() if watch_owns(k)}
         if old and old.get("via"):   # route_round raised it through host_alt: debounce the primary's own level
             old = {k: v for k, v in old.items() if k not in ("via", "via_reason", "primary_level")}
             old["level"] = prev["nodes"][name].get("primary_level", old["level"])

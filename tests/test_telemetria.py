@@ -136,6 +136,20 @@ class Ring(unittest.TestCase):
         self.assertIsNone(line["gpu"])
 
 
+FAST_MS = 1500        # one reading on an idle machine
+LOADED_PCT = 70       # above this CPU % (measured by the same reading) the timing says nothing about us
+
+
+def timing_verdict(tele: dict, strict: bool = False) -> str | None:
+    """None = assert the timing; else the reason to skip it. A busy machine (5 Claude windows,
+    a build) makes the reading slow without the collector being slow: 2834 ms and 31 s were seen
+    on 2026-10-15 at 88-100 % CPU. ENJAMBRE_TELE_STRICT=1 asserts it anyway."""
+    pct = (tele.get("cpu") or {}).get("pct")
+    if strict or pct is None or pct < LOADED_PCT:
+        return None
+    return f"timing not judged: CPU {pct} % >= {LOADED_PCT} % (reading took {tele['ms']} ms)"
+
+
 class Telemetry(unittest.TestCase):
     def test_this_machine_answers_fast_and_never_crashes(self):
         tele, prev = C.collect_telemetry(None)
@@ -144,7 +158,17 @@ class Telemetry(unittest.TestCase):
         if sys.platform in ("win32", "darwin"):
             self.assertIsNotNone(tele["cpu"])
             self.assertIn("ticks", prev)
-            self.assertLess(tele["ms"], 1500)
+            skip = timing_verdict(tele, os.environ.get("ENJAMBRE_TELE_STRICT") == "1")
+            if skip:
+                sys.stderr.write(f"\nWARNING test_telemetria: {skip}\n")
+                self.skipTest(skip)
+            self.assertLess(tele["ms"], FAST_MS)
+
+    def test_the_skip_rule(self):
+        self.assertIsNone(timing_verdict({"cpu": {"pct": 20}, "ms": 900}))
+        self.assertIsNone(timing_verdict({"cpu": None, "ms": 900}))
+        self.assertIn("CPU 88 %", timing_verdict({"cpu": {"pct": 88}, "ms": 2834}))
+        self.assertIsNone(timing_verdict({"cpu": {"pct": 88}, "ms": 2834}, strict=True))
 
 
 if __name__ == "__main__":

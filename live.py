@@ -10,9 +10,8 @@
 `run --detach` touches state/visor/live.kick: the loop wakes within a second instead of waiting.
 
 Nothing here writes jobs.jsonl or moves queue items: watch still owns the ledger and the queue.
-The one write to watch's nodes.json is mark_down (a node live could not ship to); watch's next
-tick reads it as one more observation. Accepted race: a mark written between watch's read and
-write is lost (watch's probe decides anyway), or carries a busy/mounts up to one tick old.
+The one write to nodes.json is mark_down / clear_down: live's own key `live_down`, merged under
+a lock (presence.write_live_mark); watch's next tick weighs it as one more lower observation.
 """
 from __future__ import annotations
 
@@ -216,7 +215,7 @@ def assemble(nodes: dict, payloads: dict, metas: list, queue: dict, presence: di
                         "lat_ms": nm.get("lat_ms"), "read_at": iso(nm.get("read_at")),
                         "stale_s": round(now - nm["read_at"]) if nm.get("error") and nm.get("read_at") else None,
                         "slow": nm.get("slow", False), "error": nm.get("error"),
-                        "level": pres.get("level") or ("local" if cfg.get("host") == "local" else None),
+                        "level": P.level_of(pres) or ("local" if cfg.get("host") == "local" else None),
                         "tmux": (p or {}).get("tmux"), "errors": (p or {}).get("errors") or [],
                         "via": nm.get("via") or pres.get("via"), "via_reason": pres.get("via_reason")}
     tele = {n: (payloads.get(n) or {}).get("telemetria") or (node_meta.get(n) or {}).get("tele_last")
@@ -359,23 +358,15 @@ def ship_collector(host: str, timeout: float = SHIP_TIMEOUT_S) -> str | None:
 
 
 def mark_down(node: str, reason: str, t: float | None = None, path: Path | None = None) -> None:
-    """A node live could not reach says so in nodes.json at once, so nothing is routed to it
-    while watch's next probe (<= 30 s) decides. `prior_level` lets watch debounce and notify as
-    if this mark were one more observation of its own (presence.tick)."""
-    path = path or STATE / "nodes.json"
+    """A node live could not reach says so in nodes.json at once: nodes.<node>.live_down, live's
+    only key there. Readers take `down` while it is newer than watch's last probe (P.level_of),
+    and watch's next tick weighs it as one more lower observation (presence.tick)."""
     t = time.time() if t is None else t
-    st = P.read_state(path)
-    nodes = st.setdefault("nodes", {})
-    old = nodes.get(node) or {}
-    if old.get("down_by") == "live":
-        prior, prior_since = old.get("prior_level"), old.get("prior_since")
-    else:
-        prior, prior_since = old.get("level"), old.get("since")
-    since = old.get("since") if old.get("level") == "down" else P.now_iso(t)
-    nodes[node] = dict(old, level="down", since=since, checked=P.now_iso(t), down_by="live",
-                       down_reason=reason[:200], prior_level=prior, prior_since=prior_since)
-    st["updated"] = P.now_iso(t)
-    P.write_json_atomic(path, st)
+    P.write_live_mark(path or STATE / "nodes.json", node, {"at": P.now_iso(t), "reason": reason[:200]})
+
+
+def clear_down(node: str, path: Path | None = None) -> None:
+    P.write_live_mark(path or STATE / "nodes.json", node, None)
 
 
 class Shipper:
@@ -385,13 +376,14 @@ class Shipper:
     3.5 min while the Mac was down). items: [(name, ship_fn(host) -> err | None,
     done_fn(node, host) -> log text)]."""
 
-    def __init__(self, nodes: dict, items: list, log=print, mark=mark_down,
+    def __init__(self, nodes: dict, items: list, log=print, mark=mark_down, clear=clear_down,
                  backoff: tuple = SHIP_BACKOFF_S):
         self.hosts = {n: cfg["host"] for n, cfg in nodes.items() if cfg.get("host") != "local"}
         self.todo = {n: list(items) for n in self.hosts}
         self.tries = dict.fromkeys(self.hosts, 0)
         self.next_t = dict.fromkeys(self.hosts, 0.0)
-        self.log, self.mark, self.backoff = log, mark, backoff
+        self.log, self.mark, self.clear, self.backoff = log, mark, clear, backoff
+        self.marked: set = set()
 
     def pending(self) -> dict:
         return {n: [i[0] for i in it] for n, it in self.todo.items() if it}
@@ -399,7 +391,12 @@ class Shipper:
     def tick(self, now: float, reachable=lambda node: True) -> None:
         for n, host in self.hosts.items():
             items = self.todo[n]
-            if not items or now < self.next_t[n] or not reachable(n):
+            if not items:
+                if n in self.marked and reachable(n):
+                    self.marked.discard(n)
+                    self.clear(n)
+                continue
+            if now < self.next_t[n] or not reachable(n):
                 continue
             err, down = None, False
             for item in list(items):
@@ -415,6 +412,9 @@ class Shipper:
                     break
             if not items:
                 self.tries[n] = 0
+                if n in self.marked:
+                    self.marked.discard(n)
+                    self.clear(n)
                 continue
             wait = self.backoff[min(self.tries[n], len(self.backoff) - 1)]
             self.tries[n] += 1
@@ -422,6 +422,7 @@ class Shipper:
             self.log(f"node {n}: not shipped {[i[0] for i in items]} ({err}); retry in {wait:g} s"
                      + (", marked down" if down else ""))
             if down:
+                self.marked.add(n)
                 self.mark(n, err, now)
 
 

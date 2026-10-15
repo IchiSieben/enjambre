@@ -802,7 +802,11 @@ def cmd_status(a) -> int:
         stale = "" if age <= P.FRESH_S else "   (STALE: is `enjambre watch` running?)"
         print(f"nodes  (watch, {int(age)} s ago){stale}")
         for name, n in st["nodes"].items():
-            print(f"  {name:<6} {n['level']:<6} since {n['since']}")
+            print(f"  {name:<6} {P.level_of(n):<6} since {n['since']}")
+            if n.get("live_down"):
+                ld = n["live_down"]
+                print(f"         live: unreachable at {ld.get('at')} ({ld.get('reason')})"
+                      + ("" if P.live_mark_fresh(n) else ", watch probed since"))
             if n.get("busy"):
                 print(f"         {B.describe(n['busy'])}")
             if getattr(a, "live", True):  # live, whatever watch last saw
@@ -1224,7 +1228,7 @@ def watch_round(nodes: dict, procs: dict, t: float, probe_fn, notify_fn, spawn_f
     state = P.tick(nodes, P.read_state(NODES_JSON), probe_fn, t, notify_fn, log, mounts_fn, busy_fn)
     if alt_probe_fn:   # primary silent, host_alt answers -> state/route.json + level via the alt
         P.route_round(nodes, state, t, alt_probe_fn, notify_fn, log)
-    P.write_json_atomic(NODES_JSON, state)
+    P.write_nodes_watch(NODES_JSON, state)   # only watch's keys; live's live_down survives
     reap(procs, log)
     levels = {n: s["level"] for n, s in state["nodes"].items()}
     caps = {n: c.get("max_jobs", 1) for n, c in nodes.items()}
