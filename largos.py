@@ -217,7 +217,11 @@ def ledger_entry(meta: dict, st: dict, note: str | None, pushed: bool) -> dict:
         "id": meta["id"], "node": meta["node"], "worker": "claude" if agent else "script",
         "repo": meta["repo"], "branch": st.get("branch"), "start": utc(st.get("start")) or meta.get("launched"),
         "end": utc(st.get("end")),
-        "exit": rc if isinstance(rc, int) else 2, "status": status, "reason": reason,
+        # kind tests: the lane's exit is the job's exit; claude's own rc stays as agent_rc
+        "exit": (st["lane_rc"] if isinstance(st.get("lane_rc"), int)
+                 else rc if isinstance(rc, int) else 2),
+        "agent_rc": rc if isinstance(st.get("lane_rc"), int) else None,
+        "status": status, "reason": reason,
         "permission_denials": st.get("permission_denials") or None,
         "duration_s": dur, "pushed": pushed,
         # token counts only: the CLI's usage also carries one `iterations` row per turn (99 rows)

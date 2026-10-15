@@ -160,8 +160,13 @@ class StreamState:
 
     KEYS = ("input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
 
-    def __init__(self, path: str, prices: dict | None):
+    def __init__(self, path: str, prices: dict | None, tests_cmd: str | None = None):
         self.path, self.prices, self.pos = path, prices or {}, 0
+        # kind tests: the job's verdict is the lane's exit, not claude's (cert-media-4 2026-10-15:
+        # media.sh exit 21, the agent reported the failure, claude exited 0, ledger said ok).
+        self.tests_cmd = (tests_cmd or "").strip() or None
+        self._lane_ids: set = set()
+        self.lane = None  # {"rc": int, "last": str} of the LAST tests-cmd call
         self.session_id = None
         self.last_tool = None
         # WHY per message id: stream-json emits one `assistant` event per content block (text,
@@ -214,9 +219,16 @@ class StreamState:
             for c in msg.get("content") or []:
                 if isinstance(c, dict) and c.get("type") == "tool_use":
                     self.last_tool = c.get("name")
+                    cmd = str((c.get("input") or {}).get("command") or "").strip()
+                    if self.tests_cmd and c.get("name") == "Bash" and cmd == self.tests_cmd:
+                        self._lane_ids.add(c.get("id"))
             self.last_kind = "tool_use" if "tool_use" in kinds else "text"
         elif t == "user":
             self.last_kind = "tool_result"
+            for c in (ev.get("message") or {}).get("content") or []:
+                if (isinstance(c, dict) and c.get("type") == "tool_result"
+                        and c.get("tool_use_id") in self._lane_ids):
+                    self.lane = lane_result(c)
         elif t == "result":
             self.result = ev
 
@@ -228,6 +240,42 @@ class StreamState:
         return round((u["input_tokens"] * p.get("input", 0) + u["output_tokens"] * p.get("output", 0)
                       + u["cache_creation_input_tokens"] * p.get("cache_write", 0)
                       + u["cache_read_input_tokens"] * p.get("cache_read", 0)) / 1e6, 4)
+
+
+LANE_EXIT = re.compile(r"^Exit code (-?\d+)\s*$", re.M)
+
+
+def lane_result(block: dict) -> dict:
+    """{rc, last} from the tool_result of the tests-cmd call. Claude Code reports a non-zero
+    exit as is_error with a first line `Exit code N`; a zero exit has neither."""
+    content = block.get("content")
+    if isinstance(content, list):
+        content = "\n".join(str(x.get("text") or "") for x in content if isinstance(x, dict))
+    text = str(content or "")
+    m = LANE_EXIT.search(text)
+    rc = int(m.group(1)) if m else (1 if block.get("is_error") else 0)
+    lines = [l.strip() for l in text.splitlines() if l.strip() and not LANE_EXIT.match(l.strip())]
+    return {"rc": rc, "last": (lines[-1] if lines else "")[:200]}
+
+
+def tests_cmd_of(spec: dict) -> str | None:
+    """The one command a tests job may run: spec["tests_cmd"], else the Bash(...) that
+    largos.allowed_tools put last in --allowedTools (jobs queued before this field existed)."""
+    if spec.get("tests_cmd"):
+        return str(spec["tests_cmd"]).strip()
+    last = str(spec.get("allowed") or "").split(",")[-1].strip()  # tests-cmd has no ',' (largos)
+    m = re.fullmatch(r"Bash\((.+)\)", last)
+    return m.group(1).strip() if m else None
+
+
+def classify_lane(state: str, reason, lane: dict | None) -> tuple:
+    """kind tests: the lane decides. A failing lane is `failed` whatever the agent said, with
+    `lane rc=N: <last line>` as the reason; a lane that never ran cannot be `ok`."""
+    if lane is None:
+        return ("failed", "lane: tests-cmd never ran") if state == "ok" else (state, reason)
+    if lane["rc"] != 0:
+        return ("failed", f"lane rc={lane['rc']}: {lane['last']}".rstrip(": "))
+    return (state, reason)
 
 
 # ---------- the supervisor --------------------------------------------------------------------
@@ -433,7 +481,8 @@ def _supervise(jid: str) -> int:
         mode = "w"
         out = os.path.join(d, f"log.{st['attempt']}")  # one stream per segment
         st["stream"] = os.path.basename(out)
-        stream = StreamState(out, spec.get("prices"))
+        stream = StreamState(out, spec.get("prices"),
+                             tests_cmd_of(spec) if kind == "tests" else None)
 
     st["cmd"] = cmd if kind == "script" else cmd[:3] + ["…"]
     write_json(os.path.join(d, "status.json"), st)
@@ -578,6 +627,12 @@ def _supervise(jid: str) -> int:
         state, reason = classify_agent(res, rc, budget, st["cost_usd"])
         if over_budget["hit"]:
             state, reason = "incomplete", "budget"
+        if kind == "tests":
+            if stream.lane is not None:   # kept across segments: a resume that skips it keeps it
+                st["lane_rc"], st["lane_last"] = stream.lane["rc"], stream.lane["last"]
+            lane = ({"rc": st["lane_rc"], "last": st.get("lane_last") or ""}
+                    if "lane_rc" in st else None)
+            state, reason = classify_lane(state, reason, lane)
         st["state"], st["reason"] = state, reason
         st["result"] = str((res or {}).get("result") or "")[:500]
         st["permission_denials"] = [
@@ -603,8 +658,8 @@ def _supervise(jid: str) -> int:
 
 def commit(wt: str, jid: str, st: dict, log) -> None:
     """Agent jobs: the branch is the result. Never pushed from here (enjambre.py decides)."""
-    res = {k: st.get(k) for k in ("state", "reason", "rc", "turns", "cost_usd", "session_id",
-                                  "start", "end", "attempt")}
+    res = {k: st.get(k) for k in ("state", "reason", "rc", "lane_rc", "turns", "cost_usd",
+                                  "session_id", "start", "end", "attempt")}
     with open(os.path.join(wt, "result.json"), "w", encoding="utf-8") as f:
         json.dump(dict(res, task_id=jid), f, ensure_ascii=False)
         f.write("\n")

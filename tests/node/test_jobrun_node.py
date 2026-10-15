@@ -34,6 +34,20 @@ for m in m1 m1 m2; do
 done
 echo "linea del agente" > nota.txt
 [ "$mode" = hang ] && sleep 300
+if [ "$mode" = lane ]; then  # kind tests: really run the lane, report it the way Claude Code does
+  out=$(bash tools/verify.sh 2>&1); rc=$?
+  /usr/bin/python3 - "$rc" "$out" <<'PY'
+import json, sys
+rc, out = int(sys.argv[1]), sys.argv[2]
+call = {"type": "tool_use", "id": "tl", "name": "Bash", "input": {"command": "bash tools/verify.sh"}}
+print(json.dumps({"type": "assistant", "session_id": "sid-1",
+                  "message": {"id": "m9", "usage": {}, "content": [call]}}))
+text = ("Exit code %d\n" % rc if rc else "") + out
+print(json.dumps({"type": "user", "session_id": "sid-1", "message": {"role": "user", "content": [
+    {"type": "tool_result", "tool_use_id": "tl", "content": text, "is_error": bool(rc)}]}}))
+PY
+  mode=success
+fi
 err=true; [ "$mode" = success ] && err=false
 echo '{"type":"result","subtype":"'$mode'","is_error":'$err',"total_cost_usd":'$cost',"num_turns":31,"session_id":"sid-1","result":"hecho","permission_denials":[]}'
 """
@@ -228,6 +242,29 @@ class Node(unittest.TestCase):
         self.assertIn("nota.txt", files)
         self.assertIn("result.json", files)
         self.assertNotIn(".venv", files)  # the link is excluded, never committed
+
+    def test_tests_job_verdict_is_the_lanes_exit(self):
+        # cert-media-4: the lane failed (exit 21), claude exited 0, the ledger said ok
+        tools = os.path.join(self.proj, "tools")
+        os.makedirs(tools)
+        with open(os.path.join(tools, "verify.sh"), "w") as f:
+            f.write('echo "verify.sh: lane=fake"\necho "fake lane: boom"\nexit 23\n')
+        subprocess.run(["git", "add", "-A"], cwd=self.proj, check=True)
+        subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m",
+                        "lane"], cwd=self.proj, check=True)
+        self.write("claude-mode", "lane")
+        task = "---\nkind: tests\n---\n# TASK\n"
+        allowed = "Read,Edit,Write,Glob,Grep,Bash(bash tools/verify.sh)"
+        self.launch("t-lane", kind="tests", task=task, allowed=allowed, budget_usd=2)
+        st = self.wait("t-lane", ("ok", "failed", "incomplete"))
+        self.assertEqual((st["state"], st["reason"], st["lane_rc"], st["rc"]),
+                         ("failed", "lane rc=23: fake lane: boom", 23, 0))
+        with open(os.path.join(st["worktree"], "result.json")) as f:
+            self.assertEqual(json.load(f)["lane_rc"], 23)
+        # the same agent run with no lane call at all: kind claude stays ok (rule is tests-only)
+        self.write("claude-mode", "success")
+        self.launch("c-nolane", kind="claude", task="---\nkind: claude\n---\n# TASK\n", budget_usd=2)
+        self.assertEqual(self.wait("c-nolane", ("ok", "failed", "incomplete"))["state"], "ok")
 
     def test_heartbeat_estimate_counts_each_message_once(self):
         self.write("claude-mode", "hang")
