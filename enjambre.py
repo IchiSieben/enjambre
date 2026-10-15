@@ -1430,15 +1430,14 @@ def cmd_live(a) -> int:
         log.addHandler(h)
         log.setLevel(logging.INFO)
     log.info("live start pid=%s interval=%ss", os.getpid(), a.interval)
-    for n, cfg in nodes.items():
-        if cfg.get("host") != "local":
-            err = LV.ship_collector(cfg["host"])
-            log.info("node %s: collector %s, ring backfill %s lines", n, err or "shipped",
-                     0 if err else LV.backfill_ring(n, cfg["host"]))
     import planner as PL
-    for n, cfg in nodes.items():          # control/sigtree verbs: the node needs this jobrun.py
-        if cfg.get("host") != "local":
-            log.info("node %s: jobrun %s", n, L.ship(cfg["host"]) or "shipped")
+    # collect.py, then jobrun.py (control/sigtree verbs need it). Bounded, retried from the loop;
+    # a node that does not answer is marked down and never holds the loop.
+    ship = LV.Shipper(nodes, [
+        ("collector", LV.ship_collector,
+         lambda n, h: f"collector shipped, ring backfill {LV.backfill_ring(n, h)} lines"),
+        ("jobrun", L.ship, lambda n, h: "jobrun shipped")], log=log.info)
+    ship.tick(time.time())
     plan = PL.Planner(nodes, log=log.info)
     for d in plan.release_all():          # a previous loop that died may have left something paused
         log.info("released %s on %s: %s", d["key"], d["node"], d["ok"])
@@ -1455,6 +1454,7 @@ def cmd_live(a) -> int:
                 if m.get("error") != last_err.get(n):
                     log.info("node %s: %s (%s ms)", n, m.get("error") or "ok", m.get("lat_ms"))
                     last_err[n] = m.get("error")
+            ship.tick(time.time(), lambda n: n in loop.meta and not loop.meta[n].get("error"))
         except Exception as e:  # one bad cycle must not stop the loop
             log.info("cycle error: %s: %s", type(e).__name__, e)
         if a.boot and P.owner_logged_on():

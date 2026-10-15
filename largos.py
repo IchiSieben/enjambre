@@ -118,7 +118,8 @@ def write_meta(meta: dict) -> None:
 def ship(host: str) -> str | None:
     """Copy the reviewed jobrun.py to the node every time (same rule as worker.sh)."""
     try:
-        r = subprocess.run(["scp", "-q", str(JOBRUN), f"{host}:.enjambre/jobrun.py"],
+        r = subprocess.run(["scp", "-q", "-o", "BatchMode=yes", "-o", "ConnectTimeout=6",
+                            str(JOBRUN), f"{host}:.enjambre/jobrun.py"],
                            capture_output=True, text=True, timeout=30, **P.no_console())
     except subprocess.TimeoutExpired:
         return "scp timed out (30 s)"

@@ -548,6 +548,11 @@ def tick(nodes: dict, prev: dict, probe_fn, t: float, notify_fn, log, mounts_fn=
     out = {"updated": now_iso(t), "nodes": {}}
     for name, cfg in nodes.items():
         old = prev.get("nodes", {}).get(name)
+        if old and old.get("down_by"):   # live.mark_down: one more lower observation, not a level of its own
+            prior = old.get("prior_level")
+            since = old.get("prior_since") or old.get("since")
+            old = {k: v for k, v in old.items() if k not in ("down_by", "down_reason", "prior_level", "prior_since")}
+            old = dict(old, level=prior, since=since, lower_count=DROP_AFTER - 1) if prior else None
         if old and old.get("via"):   # route_round raised it through host_alt: debounce the primary's own level
             old = {k: v for k, v in old.items() if k not in ("via", "via_reason", "primary_level")}
             old["level"] = prev["nodes"][name].get("primary_level", old["level"])

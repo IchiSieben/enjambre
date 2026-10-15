@@ -10,12 +10,16 @@
 `run --detach` touches state/visor/live.kick: the loop wakes within a second instead of waiting.
 
 Nothing here writes jobs.jsonl or moves queue items: watch still owns the ledger and the queue.
+The one write to watch's nodes.json is mark_down (a node live could not ship to); watch's next
+tick reads it as one more observation. Accepted race: a mark written between watch's read and
+write is lost (watch's probe decides anyway), or carries a busy/mounts up to one tick old.
 """
 from __future__ import annotations
 
 import datetime as dt
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -44,6 +48,10 @@ TELE_RED_S = 180           # ... and older than this red, "lectura vieja"
 REMOTE_COLLECT = "/usr/bin/python3 ~/.enjambre/visor/collect.py --node {node} --live"
 REMOTE_EXTRA: dict = {}    # node -> extra collect.py args (prompt 20: --lab / --lab-port / --adopted)
 REMOTE_RING = "tail -n {n} ~/.enjambre/visor/telemetria.ring.jsonl"
+SHIP_TIMEOUT_S = 30        # one scp at start; a node that does not answer fails at ConnectTimeout (6 s)
+SHIP_BACKOFF_S = (5, 10, 20, 40, 80, 120)   # waits between retries of what did not ship; the last repeats
+DOWN_ERR = re.compile(r"timed out|connect to host|Connection (?:refused|closed|reset)|Could not resolve"
+                      r"|No route|Network is unreachable|Host is down|Operation timed out", re.I)
 
 
 def iso(ts: float | None) -> str | None:
@@ -334,12 +342,87 @@ def ssh_live(host: str, node: str, timeout: float = 15) -> tuple[dict | None, fl
         return None, dur, ((r.stderr or b"").decode("utf-8", "replace").strip()[-200:] or f"rc {r.returncode}")
 
 
-def ship_collector(host: str) -> str | None:
+def scp(src: str, dest: str, timeout: float = SHIP_TIMEOUT_S) -> str | None:
+    """One bounded copy: a node that does not answer costs ConnectTimeout, never a hang."""
+    try:
+        r = subprocess.run(["scp", "-q", "-o", "BatchMode=yes", "-o", f"ConnectTimeout={min(6, int(timeout))}",
+                            src, dest], capture_output=True, text=True, timeout=timeout, **P.no_console())
+    except subprocess.TimeoutExpired:
+        return f"scp timed out ({timeout:g} s)"
+    return None if r.returncode == 0 else (r.stderr.strip()[-200:] or f"scp failed (rc {r.returncode})")
+
+
+def ship_collector(host: str, timeout: float = SHIP_TIMEOUT_S) -> str | None:
     """The node runs the collector this repo has: copy it before the first cycle (the 5-minute
     LaunchAgent snapshot uses the same file, which stays backward compatible)."""
-    r = subprocess.run(["scp", "-q", str(HERE / "tools" / "visor" / "collect.py"),
-                        f"{host}:.enjambre/visor/collect.py"], capture_output=True, text=True, **P.no_console())
-    return None if r.returncode == 0 else (r.stderr.strip() or "scp failed")
+    return scp(str(HERE / "tools" / "visor" / "collect.py"), f"{host}:.enjambre/visor/collect.py", timeout)
+
+
+def mark_down(node: str, reason: str, t: float | None = None, path: Path | None = None) -> None:
+    """A node live could not reach says so in nodes.json at once, so nothing is routed to it
+    while watch's next probe (<= 30 s) decides. `prior_level` lets watch debounce and notify as
+    if this mark were one more observation of its own (presence.tick)."""
+    path = path or STATE / "nodes.json"
+    t = time.time() if t is None else t
+    st = P.read_state(path)
+    nodes = st.setdefault("nodes", {})
+    old = nodes.get(node) or {}
+    if old.get("down_by") == "live":
+        prior, prior_since = old.get("prior_level"), old.get("prior_since")
+    else:
+        prior, prior_since = old.get("level"), old.get("since")
+    since = old.get("since") if old.get("level") == "down" else P.now_iso(t)
+    nodes[node] = dict(old, level="down", since=since, checked=P.now_iso(t), down_by="live",
+                       down_reason=reason[:200], prior_level=prior, prior_since=prior_since)
+    st["updated"] = P.now_iso(t)
+    P.write_json_atomic(path, st)
+
+
+class Shipper:
+    """What live copies to each remote node at start (collect.py, jobrun.py). An item that does
+    not go is retried from the loop with growing waits, and a node that does not answer is marked
+    down in nodes.json; neither blocks the cycle (2026-10-15: an scp with no timeout held live
+    3.5 min while the Mac was down). items: [(name, ship_fn(host) -> err | None,
+    done_fn(node, host) -> log text)]."""
+
+    def __init__(self, nodes: dict, items: list, log=print, mark=mark_down,
+                 backoff: tuple = SHIP_BACKOFF_S):
+        self.hosts = {n: cfg["host"] for n, cfg in nodes.items() if cfg.get("host") != "local"}
+        self.todo = {n: list(items) for n in self.hosts}
+        self.tries = dict.fromkeys(self.hosts, 0)
+        self.next_t = dict.fromkeys(self.hosts, 0.0)
+        self.log, self.mark, self.backoff = log, mark, backoff
+
+    def pending(self) -> dict:
+        return {n: [i[0] for i in it] for n, it in self.todo.items() if it}
+
+    def tick(self, now: float, reachable=lambda node: True) -> None:
+        for n, host in self.hosts.items():
+            items = self.todo[n]
+            if not items or now < self.next_t[n] or not reachable(n):
+                continue
+            err, down = None, False
+            for item in list(items):
+                name, ship_fn, done_fn = item
+                e = ship_fn(host)
+                if e is None:
+                    items.remove(item)
+                    self.log(f"node {n}: {done_fn(n, host)}")
+                    continue
+                err = f"{name}: {e}"
+                if DOWN_ERR.search(e):   # the node, not the file: the rest would fail the same way
+                    down = True
+                    break
+            if not items:
+                self.tries[n] = 0
+                continue
+            wait = self.backoff[min(self.tries[n], len(self.backoff) - 1)]
+            self.tries[n] += 1
+            self.next_t[n] = now + wait
+            self.log(f"node {n}: not shipped {[i[0] for i in items]} ({err}); retry in {wait:g} s"
+                     + (", marked down" if down else ""))
+            if down:
+                self.mark(n, err, now)
 
 
 def ring_path(node: str) -> Path:
