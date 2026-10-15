@@ -75,6 +75,19 @@ class Tree(unittest.TestCase):
                 mock.patch.object(A, "KEY_FILE", Path(d) / "none"):
             self.assertEqual(A.main([d]), 2)
 
+    def test_wrong_key_never_green(self):
+        # a mistyped CI secret matches no word: without the witness it would pass as green
+        with tempfile.TemporaryDirectory() as d:
+            words = Path(d) / "prohibidas.txt"
+            words.write_text(A.word_hash(KEY, "secreto") + "\n", encoding="utf-8")
+            with mock.patch.dict(os.environ, {A.KEY_ENV: KEY.decode()}), mock.patch.object(A, "WORDS_FILE", words):
+                self.assertEqual(A.main([d]), 2)
+                words.write_text(words.read_text(encoding="utf-8") + A.word_hash(KEY, A.CANARY) + "\n",
+                                 encoding="utf-8")
+                self.assertEqual(A.main([d]), 0)
+            with mock.patch.dict(os.environ, {A.KEY_ENV: "other-key"}), mock.patch.object(A, "WORDS_FILE", words):
+                self.assertEqual(A.main([d]), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

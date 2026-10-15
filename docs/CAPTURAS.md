@@ -45,5 +45,6 @@ Mermaid están en `docs/diagramas/`.
 
 ## Estado
 
-Ninguna de las cinco imágenes existe todavía. Se graban en la Mac con Playwright antes de
-publicar; hasta entonces, la portada de los README apunta a un archivo ausente.
+Las cinco existen. Se grabaron en la Mac desde el modo demo y se revisaron a tamaño real. Sus
+sha256 están en `tools/publicar/binarios.txt`: la auditoría rechaza cualquier binario que no
+figure ahí.

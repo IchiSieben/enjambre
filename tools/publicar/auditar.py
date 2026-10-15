@@ -3,6 +3,7 @@
 
     python tools/publicar/auditar.py [DIR]          # audit DIR (default: the repo root)
     python tools/publicar/auditar.py --hash WORD    # the line to add to prohibidas.txt
+    python tools/publicar/auditar.py --testigo      # the key's witness line (once per key)
 
 What it rejects, in every text file (and in file names, and in the git history if DIR has one):
   ip      IPv4 outside loopback / 0.0.0.0 / the documentation ranges (RFC 5737); IPv6 other than
@@ -107,6 +108,12 @@ def load_words(path: Path = WORDS_FILE) -> tuple[bytes, set]:
     return audit_key(), hashes
 
 
+# The key's witness: prohibidas.txt carries HMAC(key, CANARY). A WRONG key (a mistyped CI secret)
+# matches no word and would give a false green; without the witness's line there is no green. The
+# NUL bytes keep it out of reach of TOKEN, so no file can ever hit it as a word.
+CANARY = "\x00enjambre-testigo\x00"
+
+
 def word_hash(salt: bytes, word: str) -> str:
     return hmac.new(salt, word.lower().encode("utf-8"), hashlib.sha256).hexdigest()
 
@@ -208,7 +215,7 @@ def audit_history(root: Path) -> list:
 
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    key, hashes = load_words()
+    key, hashes = load_words(WORDS_FILE)
     if not key:
         print(f"auditoría: SIN CLAVE ({KEY_ENV} o ~/.config/enjambre/{KEY_FILE.name}): la regla de palabras no corre; no hay verde")
         return 2
@@ -218,6 +225,12 @@ def main(argv=None) -> int:
         return 0
     if not hashes:
         print("auditoría: prohibidas.txt vacío o ausente: no hay verde")
+        return 2
+    if argv[:1] == ["--testigo"]:
+        print(word_hash(key, CANARY) + "  testigo de la clave")
+        return 0
+    if word_hash(key, CANARY) not in hashes:
+        print(f"auditoría: CLAVE DISTINTA: {KEY_ENV} no es la clave de prohibidas.txt (falta su testigo); no hay verde")
         return 2
     root = Path(argv[0] if argv else HERE.parent.parent).resolve()
     found = audit_tree(root) + audit_history(root)
