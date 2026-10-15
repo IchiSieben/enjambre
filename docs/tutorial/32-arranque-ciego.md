@@ -64,10 +64,10 @@ murió en su primer segundo, antes de escribir `status.json`. `jobrun.py status`
 y no ve estado, así que responde `unknown, launched: true`. Mientras tanto, `launch` ya había
 contestado «lanzado (sin confirmar en 10 s)», y el PC escribió `job.json`.
 
-El tercero, `eco-gates-2`, recibió `--repo C:\Users\...\wt\landing-ecosistema`. En el PC,
+El tercero, `eco-gates-2`, recibió `--repo <ruta-windows>\wt\landing-ecosistema`. En el PC,
 `PORTFOLIO / "C:\\..."` **es** esa ruta absoluta (así funciona `pathlib` con rutas absolutas), y por
-eso el contrato local pasó. En la Mac el resultado fue `~/Documents/Portfolio/C:\Users\...`. Hubo un
-cuarto caso de la misma familia: el zombi `sync-branch-20261007-135456`, con `repo: "C:/Users/.../<otro-repo>"`,
+eso el contrato local pasó. En la Mac el resultado fue `~/Documents/Portfolio/<ruta-windows>`. Hubo un
+cuarto caso de la misma familia: el zombi `sync-branch-20261007-135456`, con `repo: "<ruta-windows>/<otro-repo>"`,
 llevaba una semana muerto y `watch` lo anotaba cada minuto.
 
 ## 2. Preflight: fallar antes de lanzar
@@ -125,7 +125,7 @@ $ python enjambre.py status
 ... objcap-build-20261008-033233 mac  script  failed  exit=2  [cerrado manualmente 2026-10-15]
 ... cert-media                   mac  claude  failed  exit=2  [dead-at-launch: FileNotFoundError: ... '~/Documents/Portfolio/claude-cert-studio']
 ... kit-media                    mac  claude  failed  exit=2  [dead-at-launch: FileNotFoundError: ... '~/Documents/Portfolio/claude-kit']
-... eco-gates-2                  mac  claude  failed  exit=2  [dead-at-launch: FileNotFoundError: ... 'C:\\Users\\...\\wt\\landing-ecosistema']
+... eco-gates-2                  mac  claude  failed  exit=2  [dead-at-launch: FileNotFoundError: ... '<ruta-windows>\\wt\\landing-ecosistema']
 ```
 
 ## Cómo verificar
