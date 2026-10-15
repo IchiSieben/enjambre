@@ -257,14 +257,15 @@ class NeverUnknown(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.home = Path(self.tmp.name)
-        self.saved = (J.JOBS, J.PORTFOLIO, J.BUSY, J.ensure_worktree, E.L.JOBS)
+        self.saved = (J.JOBS, J.PORTFOLIO, J.BUSY, J.ensure_worktree, E.L.JOBS, J.HOME)
+        J.HOME = str(self.home)   # the reason folds HOME to ~: fold the test's home, on every OS
         J.JOBS = str(self.home / ".enjambre" / "jobs")
         J.BUSY = str(self.home / ".enjambre" / "busy.json")
         J.PORTFOLIO = str(self.home / "Documents" / "Portfolio")
         E.L.JOBS = self.home / "state" / "jobs"
 
     def tearDown(self):
-        J.JOBS, J.PORTFOLIO, J.BUSY, J.ensure_worktree, E.L.JOBS = self.saved
+        J.JOBS, J.PORTFOLIO, J.BUSY, J.ensure_worktree, E.L.JOBS, J.HOME = self.saved
         self.tmp.cleanup()
 
     def node_status(self, jid):
@@ -287,6 +288,8 @@ class NeverUnknown(unittest.TestCase):
         self.assertEqual((st["state"], st["rc"], st["alive"]), ("failed", 2, False))
         self.assertIn("FileNotFoundError", st["reason"])
         self.assertNotIn(str(self.home), st["reason"])
+        if sys.platform != "win32":   # jobrun runs on POSIX nodes; Windows str(e) escapes backslashes
+            self.assertIn("~/Documents/Portfolio/claude-cert-studio", st["reason"])
         log = (d / "supervisor.log").read_text(encoding="utf-8").splitlines()
         self.assertIn("starting supervisor", log[0])
         self.assertIn("crashed", log[1])
