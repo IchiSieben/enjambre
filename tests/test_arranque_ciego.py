@@ -242,6 +242,22 @@ class Clone(Env):
         self.assertEqual(self.sh.calls, [])
         self.assertFalse(E.LEDGER.exists())
 
+    def test_a_hung_clone_is_bounded_and_ledgered(self):
+        def run(cmd, **kw):
+            self.sh.calls.append((cmd, kw.get("timeout")))
+            if cmd[0] == "git":
+                return subprocess.CompletedProcess(cmd, 0, "https://github.com/IchiSieben/proj.git" + NL, "")
+            if "tmux-run.sh" in cmd[-1]:
+                raise subprocess.TimeoutExpired(cmd, kw.get("timeout"))
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+        E.sh = run
+        rc, _ = self.run_main(["clone", "--node", "mac", "proj"])
+        self.assertEqual(rc, 124)
+        self.assertTrue(all(t for c, t in self.sh.calls if c[0] in ("ssh", "scp")), "every ssh/scp has a timeout")
+        e = self.ledger()[0]
+        self.assertEqual(e["status"], "failed")
+        self.assertIn("timed out", e["reason"])
+
     def test_node_script_is_idempotent_shell(self):
         line = E.clone_script("claude-kit", "https://github.com/IchiSieben/claude-kit.git")
         self.assertTrue(line.startswith('if [ -d "$HOME/Documents/Portfolio/claude-kit"/.git ]; then echo exists'))

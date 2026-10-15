@@ -625,12 +625,23 @@ def clone_on_node(node_name: str, host: str, repo: str, url: str, sh_fn=None) ->
     """Clone through tmux-run.sh: the window is born in the GUI session, so git reads the login
     keychain (HTTPS to a private repo). Over plain ssh it would fail as "not logged in"."""
     run = sh_fn or sh
-    up = run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", host, "mkdir -p ~/.enjambre"])
-    up = up if up.returncode else run(["scp", "-q", str(TMUX_RUN), f"{host}:.enjambre/"])
+    # WHY timeouts here too: on 2026-10-15 a clone of the private repo held the ssh open for
+    # 20+ min, past tmux-run's own 900 s. The PC never waits unbounded: it writes `failed`.
+    try:
+        up = run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", host, "mkdir -p ~/.enjambre"],
+                 timeout=30)
+        up = up if up.returncode else run(["scp", "-q", str(TMUX_RUN), f"{host}:.enjambre/"], timeout=30)
+    except subprocess.TimeoutExpired:
+        return 124, "cannot reach node: ssh/scp timed out (30 s)"
     if up.returncode:
         return 4, "cannot reach node: " + (up.stderr or "").strip()[-200:]
-    r = run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", host,
-             "bash .enjambre/tmux-run.sh -t 900 -- bash -c " + shlex.quote(clone_script(repo, url))])
+    try:
+        r = run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=30",
+                 host, "bash .enjambre/tmux-run.sh -t 900 -- bash -c " + shlex.quote(clone_script(repo, url))],
+                timeout=960)
+    except subprocess.TimeoutExpired:
+        return 124, ("clone timed out after 960 s; the tmux window may still be running on the node "
+                     "(~/.enjambre/run/); run clone again later: it answers `exists` once done")
     out = ((r.stdout or "").strip().splitlines() or [""])[-1]
     return r.returncode, out if r.returncode == 0 else ((r.stderr or "").strip()[-300:] or out)
 
