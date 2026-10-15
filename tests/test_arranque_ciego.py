@@ -6,6 +6,7 @@ path. These tests keep both from coming back.
 """
 import io
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -264,6 +265,38 @@ class Clone(Env):
         self.assertIn("git clone --quiet https://github.com/IchiSieben/claude-kit.git", line)
         r = subprocess.run(["bash", "-n", "-c", line], capture_output=True)
         self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_update_fast_forwards_an_existing_clone_and_refuses_a_diverged_one(self):
+        """`clone --update` (2026-10-15, playwright-unlock): a `script` job runs in the node's clone
+        as it is, so a new script has to get there first. Real git, a temp HOME."""
+        with tempfile.TemporaryDirectory() as d:
+            home = Path(d)
+            env = dict(os.environ, HOME=str(home), GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t",
+                       GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
+
+            def git(*args, cwd):
+                return subprocess.run(["git", *args], cwd=cwd, env=env, capture_output=True, text=True, check=True)
+            origin, work = home / "origin.git", home / "work"
+            git("init", "-q", "--bare", "-b", "main", str(origin), cwd=d)
+            git("clone", "-q", str(origin), str(work), cwd=d)
+            git("commit", "-q", "--allow-empty", "-m", "one", cwd=work)
+            git("push", "-q", "origin", "HEAD:main", cwd=work)
+            (home / "Documents" / "Portfolio").mkdir(parents=True)
+            node = home / "Documents" / "Portfolio" / "r"
+            git("clone", "-q", str(origin), str(node), cwd=d)
+            git("commit", "-q", "--allow-empty", "-m", "two", cwd=work)
+            git("push", "-q", "origin", "HEAD:main", cwd=work)
+            want = git("rev-parse", "--short", "HEAD", cwd=work).stdout.strip()
+            line = E.clone_script("r", origin.as_uri(), update=True)
+            r = subprocess.run(["bash", "-c", line], env=env, capture_output=True, text=True)
+            self.assertEqual((r.returncode, r.stdout.strip()), (0, f"updated {want}"), r.stderr)
+            git("commit", "-q", "--allow-empty", "-m", "local only", cwd=node)
+            git("commit", "-q", "--allow-empty", "-m", "three", cwd=work)
+            git("push", "-q", "origin", "HEAD:main", cwd=work)
+            r = subprocess.run(["bash", "-c", line], env=env, capture_output=True, text=True)
+            self.assertNotEqual(r.returncode, 0)                       # diverged: not touched
+            self.assertIn("exists", subprocess.run(["bash", "-c", E.clone_script("r", "x")], env=env,
+                                                   capture_output=True, text=True).stdout)
 
 
 class NeverUnknown(unittest.TestCase):

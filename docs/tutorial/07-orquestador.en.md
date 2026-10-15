@@ -146,7 +146,7 @@ travels in the public kit.**
 | Personal rules (the owner's "autonomous mode") | `home/.claude/rules/personal.md` | Spanish | **never** |
 
 How the second point is guaranteed: `build-kit.sh` deletes any copy of `personal.md` from the kit
-and **fails** if the text "MODO AUTÓNOMO" appears anywhere in the kit (the check was tested in both
+and **fails** if the text `MODO AUTÓNOMO` appears anywhere in the kit (the check was tested in both
 directions on a test kit). For `personal.md` to be loaded no `@import` is needed: this was verified
 with a fresh `claude -p` session, with no tools and outside any repo, which quoted point 5 of the
 rule and named the file.
@@ -209,4 +209,4 @@ section 3.2 green. Finally, two runs of `sync-to-home.sh` in a row: the second m
    script must relaunch itself under bash ≥ 4.2.</details>
 3. Why does `personal.md` not travel in the public kit, and how is that prevented by accident?
    <details><summary>Answer</summary>Because it contains personal rules; `build-kit.sh` deletes
-   any copy and fails if the text "MODO AUTÓNOMO" appears in the kit.</details>
+   any copy and fails if the text `MODO AUTÓNOMO` appears in the kit.</details>

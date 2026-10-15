@@ -53,13 +53,13 @@ It cost **0.32 GB**. The system Python (3.9.6) is no use: `mlx-lm` requires ≥ 
 The Hugging Face API (`/api/models/<repo>?blobs=true`) was read for size, license and whether the
 model is *gated*. One per task, the most permissively licensed one that fits:
 
-| Tarea | Modelo | Disco | Licencia |
+| Task | Model | Disk | License |
 |---|---|---|---|
-| Transcripción | `mlx-community/whisper-large-v3-turbo` | 1,61 GB | MIT |
-| Hablantes | `mlx-community/Nemotron-3-Diarization` (por defecto) · sherpa-onnx: pyannote seg-3.0 + 3D-Speaker (alternativa) | 0,20 · 0,05 GB | OpenMDW · MIT + Apache |
-| Texto/código | `mlx-community/Qwen3.5-9B-MLX-4bit` | 5,98 GB | Apache-2.0 |
-| Visión | `mlx-community/Qwen3-VL-8B-Instruct-4bit` | 5,78 GB | Apache-2.0 |
-| Imagen | `mflux-community/flux2-klein-4b-mflux-q4` | 4,62 GB | Apache-2.0 |
+| Transcription | `mlx-community/whisper-large-v3-turbo` | 1.61 GB | MIT |
+| Speakers | `mlx-community/Nemotron-3-Diarization` (default) · sherpa-onnx: pyannote seg-3.0 + 3D-Speaker (alternative) | 0.20 · 0.05 GB | OpenMDW · MIT + Apache |
+| Text/code | `mlx-community/Qwen3.5-9B-MLX-4bit` | 5.98 GB | Apache-2.0 |
+| Vision | `mlx-community/Qwen3-VL-8B-Instruct-4bit` | 5.78 GB | Apache-2.0 |
+| Image | `mflux-community/flux2-klein-4b-mflux-q4` | 4.62 GB | Apache-2.0 |
 
 Full proposal (2 candidates per task, why one and not the other):
 `modelos-mac/docs/MODELOS.md`.

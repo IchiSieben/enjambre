@@ -147,8 +147,8 @@ appears in the header; while polling works, the button is hidden.
 separate from Brave's. Crop with no project data.*
 
 **Real test (2026-10-07):**
-- The app was opened from the desktop shortcut. The window is called «Visor del
-  enjambre» and its large icon (the one the taskbar uses, 48 px read with `WM_GETICON`) is
+- The app was opened from the desktop shortcut. The window is called `Visor del enjambre`
+  and its large icon (the one the taskbar uses, 48 px read with `WM_GETICON`) is
   the hexagon.
 - The snapshot was rebuilt at 21:46:01. At 21:46:27 the window, which had been opened at
   21:45 with the previous snapshot, already said «19 s ago»: it reloaded itself, untouched.

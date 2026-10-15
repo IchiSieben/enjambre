@@ -99,7 +99,7 @@ What was learned from this:
 - **The thermal limit does not show up** until macOS records an event: `pmset -g therm` does not
   print `CPU_Speed_Limit`. The honest value is `null` (unknown), not 100. What is known
   is that “no thermal warning has been recorded”.
-- **The GPU was at 98 %** and there was nothing obvious in `ps`: it was the proyecto-externo render. The
+- **The GPU was at 98 %** and there was nothing obvious in `ps`: it was the `proyecto-externo` render. The
   `pgid` of the Python process (73413) is the pid of the `cohbench` pane in the enjambre tmux. That cross-reference
   is what tags the process.
 - `top -l 2` takes 1.3 s. Instead, the CPU is read from the kernel counters with ctypes
@@ -221,7 +221,7 @@ more often. Now swarm jobs go first and sessions after. And the job's own
 Claude showed up as one more session (`enjambre-sandbox-live-probe2-dc`): it is now
 folded into the job's card.
 
-### b) The proyecto-externo render shows up tagged as belonging to the swarm
+### b) The `proyecto-externo` render shows up tagged as belonging to the swarm
 
 ```
 live.json -> telemetria.mac.top:
@@ -314,7 +314,7 @@ The criterion in §5 asks that “`run` picks the other node and says so”. Wit
 happen: the PC has `runnable = false`, so the honest thing is to queue and say why, which is
 what comes out above. The “picks the other node” part is tested with three nodes in
 `tests/test_reposo.py` (`Routing.test_pressure_sends_the_job_to_the_other_node_and_says_why`):
-`run`, `laptop`, `diverted_from: mac`, “reposo: sin memoria…”. `Decide.test_decide_reads_live_json`
+`run`, `laptop`, `diverted_from: mac`, `reposo: sin memoria…`. `Decide.test_decide_reads_live_json`
 goes through the real `decide()`.
 
 With an explicit `--node mac` it warns, but dispatches:

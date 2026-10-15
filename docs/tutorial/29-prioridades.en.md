@@ -21,7 +21,7 @@ viewer says what class each job has, what state it is in and **why**.
 
 ## Why (0. The problem)
 
-The Mac does everything: hour-long proyecto-externo renders, Landing test suites, pharmacy agents.
+The Mac does everything: hour-long `proyecto-externo` renders, Landing test suites, pharmacy agents.
 Until now, whoever arrived first kept the machine. A background render could delay by half an hour
 a check the owner was waiting on. Killing the render by hand was no fix either: everything it had
 done was lost. Three things were missing:
@@ -104,7 +104,7 @@ Besides the queue, the class is applied to the process itself. On the Mac, a baj
 
 | Clase | macOS | Windows |
 |---|---|---|
-| alta / normal | por defecto | Normal |
+| alta / normal | default | Normal |
 | baja | `taskpolicy -b nice -n 15` | BelowNormal + EcoQoS |
 | nocturna | `taskpolicy -b nice -n 19` | Idle + EcoQoS |
 
@@ -199,7 +199,7 @@ The four phases in the viewer:
 *(capture of the real setup: not published; see docs/CAPTURAS.md for the demo-mode ones)*
 *(capture of the real setup: not published; see docs/CAPTURAS.md for the demo-mode ones)*
 
-## 5. External jobs: the proyecto-externo lab
+## 5. External jobs: the `proyecto-externo` lab
 
 The lab (`uvicorn externo.lab.app:app`, port 8800 on the Mac) has its own queue and its own pause
 API: `POST /jobs/{id}/pause|resume`, which sends SIGSTOP/SIGCONT to the render. Enjambre does not
@@ -372,7 +372,7 @@ It now uses the link-local of `en0`; the `%4` is the index of the PC's network c
 change. Verified: `ssh mac6` → `…%en0`.
 
 There was no fixed IP anywhere in the code: `nodes.toml` uses `host = "mac"`, `smb-mount.sh` and
-the bridge go through the alias, and the proyecto-externo lab listens on `0.0.0.0:8800` and
+the bridge go through the alias, and the `proyecto-externo` lab listens on `0.0.0.0:8800` and
 enjambre talks to it from the Mac itself (127.0.0.1). The old IP only appears in historical
 documents and in logs of old runs. `routing.toml` has none either (checked in prompt 21 §1). To
 keep it that way, `tests/test_no_fixed_ips.py` fails if a LAN address shows up in the config, the
@@ -383,20 +383,20 @@ scripts or the code: the only address lives in the router's DHCP reservation and
 
 `ssh mac true`, 10 times, timed from the PC:
 
-| Ruta | Mediana | Mín | Máx |
+| Path | Median | Min | Max |
 |---|---|---|---|
-| Wi-Fi (IP de `en1`) | **266 ms** | 244 | 395 |
-| Ethernet (IP de `en0`), mismo momento | 216 ms | 209 | 251 |
-| Ethernet por el alias ya cambiado | **187 ms** | 166 | 210 |
+| Wi-Fi (`en1` IP) | **266 ms** | 244 | 395 |
+| Ethernet (`en0` IP), same moment | 216 ms | 209 | 251 |
+| Ethernet through the alias, already switched | **187 ms** | 166 | 210 |
 
 `tools/smb-bench.sh 2` (2 GiB; SMB skipped because `Compartido-Mac` is not mounted on the Mac,
 scp only):
 
-| Corrida | Win → Mac | Mac → Win |
+| Run | Win → Mac | Mac → Win |
 |---|---|---|
-| 2026-10-05, solo Wi-Fi (`en1`), 5 GiB | 53,4 MB/s | 66,7 MB/s |
-| 2026-10-10, a la IP del Wi-Fi con el cable ya puesto | 48,7 MB/s | 69,6 MB/s |
-| 2026-10-10, por Ethernet | **64,5 MB/s** | **100,7 MB/s** |
+| 2026-10-05, Wi-Fi only (`en1`), 5 GiB | 53.4 MB/s | 66.7 MB/s |
+| 2026-10-10, to the Wi-Fi IP with the cable already plugged in | 48.7 MB/s | 69.6 MB/s |
+| 2026-10-10, over Ethernet | **64.5 MB/s** | **100.7 MB/s** |
 
 The middle run is **mixed**: packets to the Wi-Fi IP come in through `en1`, but the Mac answers
 through its primary interface (`en0`). That is why the bench already recorded `mac_iface: en0`.
@@ -424,9 +424,9 @@ Real failures from this practice, each with its fix in the section indicated:
 With the outputs already shown above:
 
 1. Queue a nocturna job outside the window: `python enjambre.py script --node mac --repo enjambre-sandbox --cmd cpu-burn --priority nocturna`. Expected: `enjambre scheduler [nocturna] waiting_window: esperando la ventana nocturna: abre mañana a las 00:00 (America/Lima)`.
-2. Launch a baja job (`cpu-burn-ck`) and, at 40 s, an alta job. Expected in `live.json`: `paused_by_priority`, with the reason "pausado por … (alta)".
+2. Launch a baja job (`cpu-burn-ck`) and, at 40 s, an alta job. Expected in `live.json`: `paused_by_priority`, with the reason `pausado por … (alta)`.
 3. With the baja job paused, `ps` on the Mac must show the baja job in state `T` with NI 15 / PRI 4, and the alta job with NI 0 / PRI 31.
-4. After 60 s with no alta job, the baja job goes to `running` with "reanudado: nodo libre de alta durante 64 s" and ends `ok`.
+4. After 60 s with no alta job, the baja job goes to `running` with `reanudado: nodo libre de alta durante 64 s` and ends `ok`.
 5. In `jobs.jsonl`, the baja job's line carries `preemptions` with the two state changes.
 
 ## Self-check

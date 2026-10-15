@@ -608,10 +608,14 @@ def cmd_script(a) -> int:
 CLONE_URL = re.compile(r"(https://|git@)[A-Za-z0-9@:./_~-]+")
 
 
-def clone_script(repo: str, url: str) -> str:
-    """The node-side line: idempotent, one word on stdout (`exists` | `cloned`)."""
+def clone_script(repo: str, url: str, update: bool = False) -> str:
+    """The node-side line: idempotent, one word on stdout (`exists` | `cloned`). With update, an
+    existing clone is fast-forwarded to its upstream (`updated <sha>`); a diverged or dirty clone
+    fails instead of being touched (`script` jobs run in the clone as it is, with no fetch)."""
     d = f'"$HOME/Documents/Portfolio/{repo}"'
-    return (f"if [ -d {d}/.git ]; then echo exists; "
+    present = (f"git -C {d} fetch -q origin && git -C {d} merge --ff-only -q '@{{u}}' && "
+               f"echo updated $(git -C {d} rev-parse --short HEAD)") if update else "echo exists"
+    return (f"if [ -d {d}/.git ]; then {present}; "
             f"elif [ -e {d} ]; then echo 'not a git repo: ~/Documents/Portfolio/{repo}' >&2; exit 3; "
             f"else git clone --quiet {shlex.quote(url)} {d} && echo cloned; fi")
 
@@ -621,7 +625,8 @@ def origin_url(repo: str) -> str | None:
     return r.stdout.strip() if r.returncode == 0 and r.stdout.strip() else None
 
 
-def clone_on_node(node_name: str, host: str, repo: str, url: str, sh_fn=None) -> tuple[int, str]:
+def clone_on_node(node_name: str, host: str, repo: str, url: str, sh_fn=None,
+                  update: bool = False) -> tuple[int, str]:
     """Clone through tmux-run.sh: the window is born in the GUI session, so git reads the login
     keychain (HTTPS to a private repo). Over plain ssh it would fail as "not logged in"."""
     run = sh_fn or sh
@@ -637,7 +642,7 @@ def clone_on_node(node_name: str, host: str, repo: str, url: str, sh_fn=None) ->
         return 4, "cannot reach node: " + (up.stderr or "").strip()[-200:]
     try:
         r = run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=30",
-                 host, "bash .enjambre/tmux-run.sh -t 900 -- bash -c " + shlex.quote(clone_script(repo, url))],
+                 host, "bash .enjambre/tmux-run.sh -t 900 -- bash -c " + shlex.quote(clone_script(repo, url, update))],
                 timeout=960)
     except subprocess.TimeoutExpired:
         return 124, ("clone timed out after 960 s; the tmux window may still be running on the node "
@@ -668,7 +673,7 @@ def cmd_clone(a) -> int:
         return 3
     started = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
     t0 = time.time()
-    rc, out = clone_on_node(a.node, nodes[a.node]["host"], a.repo, url)
+    rc, out = clone_on_node(a.node, nodes[a.node]["host"], a.repo, url, update=getattr(a, "update", False))
     entry = {"id": L.job_id(f"clone-{a.repo}"), "node": a.node, "worker": "clone", "repo": a.repo,
              "branch": None, "start": started,
              "end": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
@@ -1580,6 +1585,8 @@ def main(argv=None) -> int:
     cl.add_argument("repo", help="repo name under <portfolio>/")
     cl.add_argument("--node", default="mac")
     cl.add_argument("--url", help="default: the local clone's origin")
+    cl.add_argument("--update", action="store_true",
+                    help="an existing clone: fetch + fast-forward to its upstream (before a `script` job)")
     cl.set_defaults(fn=cmd_clone)
     co = sub.add_parser("collect", help="bring finished long jobs home (watch does it every minute)")
     co.add_argument("id", nargs="?")

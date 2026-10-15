@@ -155,7 +155,7 @@ Summary of the path; the contract tables, signatures and states are in
    - list of workers;
    - path regex, no `..`;
    - the restricted words, structurally in paths, and with a word boundary in free text (so
-     "análisis" passes);
+     `análisis` passes);
    - daily limit by Lima day.
 5. It writes `TASK-<id>.md` and enqueues in enjambre. **Never a shell**: the only argv is
    `enjambre.py run --repo <from the list> --task <generated path>`.

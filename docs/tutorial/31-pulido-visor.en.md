@@ -54,7 +54,7 @@ built. `live.count_externos()` adds them at the end of the cycle and the header 
 
 *(capture of the real setup: not published; see docs/CAPTURAS.md for the demo-mode ones)*
 
-### 2.2 "Última señal hace —" on an external job
+### 2.2 `Última señal hace —` on an external job
 
 A lab job has no heartbeat of its own. Its signal is the answer to `GET /jobs`, with the time of
 the poll. Progress does not come in `/jobs`: it is in each render's log
@@ -114,7 +114,7 @@ applied in four places:
 - in the page's `deid()`, for the history and the details;
 - when publishing (`web.clean_why` / `clean_log`).
 
-On the web, that cause still comes out as "exit 1 (detalle solo en local)": `~/` still counts as a
+On the web, that cause still comes out as `exit 1 (detalle solo en local)`: `~/` still counts as a
 path for the leak check.
 
 *(capture of the real setup: not published; see docs/CAPTURAS.md for the demo-mode ones)*
@@ -136,13 +136,13 @@ heartbeat takes the time of the process reading (`lista de procesos`); the exact
   (sessions opened in `~`). It is not a cause (outside §3) and the name is stored in `history.db`.
   Changing `project_of` would split the history into two groups. Proposal: rename it when
   displaying. The web copy already publishes projects by alias only.
-- In the PC detail, the thermal gauge says "(sin sudo)", which is the Mac's reason, not the PC's.
+- In the PC detail, the thermal gauge says `(sin sudo)`, which is the Mac's reason, not the PC's.
   It predates this work; it was left alone.
 
 ## What actually went wrong
 
 - The header did not count lab renders or adopted processes (§2.1).
-- A lab external job showed "Última señal hace —" because it has no heartbeat of its own (§2.2).
+- A lab external job showed `Última señal hace —` because it has no heartbeat of its own (§2.2).
 - `parse_netstat` read shifted columns on interfaces with no address (`gif0`, a VPN's `utun`); it now has a test (§2.3).
 - The Attention table showed the username in a full path (§3).
 
